@@ -1,0 +1,8 @@
+# datasets
+data
+
+# mac OS
+**/.DS_Store
+
+# python
+.python-version
