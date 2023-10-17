@@ -1,6 +1,9 @@
 # datasets
 data
 
+# >100 MB soundfonts (too large for github unfortunately)
+sf/big
+
 # mac OS
 **/.DS_Store
 
