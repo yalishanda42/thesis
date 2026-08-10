@@ -198,8 +198,19 @@ The spec is the shared source of truth; implementation is split so each session 
 
 ## 9. Open / deferred decisions
 
-- **Time-signature in transformer** — gated on Phase 0 meter audit (§5).
-- **Final voice grouping** — output of Phase 0 (§3).
-- **`SIMULTANEITY_TOL`** — output of Phase 0 (§3).
-- **Probabilistic heads** — full design deferred to Plan C (§6).
-- **Odd-meter handling** — revisited only if Phase 0 surfaces 5/4, 7/8, 7/4, etc.
+**Phase 0 has run** (train split, 11.07 M notes) — see
+[`../../phase0/results.md`](../../phase0/results.md). Outcomes below; items marked *[decision]*
+are recommendations awaiting sign-off.
+
+- **Time-signature in transformer** — *[decision]* **drop** it: train split is 98.78% 4/4, truly
+  odd meters (5/4, 5/8) are 0.24%; keep in tabular (free for trees). (§5 gate resolved.)
+- **Final voice grouping** — *[decision]* ~14 voices; Roland hi-hat *edge* hits (pitch 22, 26) and
+  electric snare (40) kept separate (common & distributionally distinct), toms merged
+  (velocity-indistinguishable). Full table in the results doc. (§3.)
+- **`SIMULTANEITY_TOL`** — *[decision]* **0.02 beat** (fixed). Phase 0 found **no near-zero
+  valley** — the tight-gap region decays monotonically — so this is a documented hyperparameter,
+  not a data-derived valley. A separate, clean valley at ≈ 0.149 beat marks the sub-16th/16th-grid
+  boundary (evidence for the no-grid choice, §2). (§3.)
+- **Probabilistic heads** — full design deferred to Plan C (§6). Phase 0 confirms strong
+  snare/hi-hat velocity multimodality that motivates it.
+- **Odd-meter handling** — none needed (0.24% truly odd meters). (Resolved.)
