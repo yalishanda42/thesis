@@ -1,0 +1,20 @@
+# Core dependencies for the drum-velocity humanization project.
+# Install into a venv:  python -m venv .venv && .venv/bin/pip install -r requirements.txt
+#
+# Native library also required for playback (not pip-installable):
+#   macOS:  brew install fluid-synth
+#   Debian: apt-get install fluidsynth
+
+partitura>=1.9        # MIDI performance/score parsing -> note arrays
+music21               # music theory toolkit (used in early EDA)
+numpy
+pandas
+scikit-learn>=1.6     # NOTE: use root_mean_squared_error (squared= arg removed in 1.6+)
+torch
+matplotlib
+pyfluidsynth          # Python bindings for FluidSynth (needs the native lib above)
+
+# Notebook execution
+jupyter
+ipykernel
+nbconvert

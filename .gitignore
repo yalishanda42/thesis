@@ -10,3 +10,9 @@ input
 
 # python
 .python-version
+.venv
+venv
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.deepeval
