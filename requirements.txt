@@ -10,6 +10,8 @@ music21               # music theory toolkit (used in early EDA)
 numpy
 pandas
 scikit-learn>=1.6     # NOTE: use root_mean_squared_error (squared= arg removed in 1.6+)
+lightgbm>=4.0         # gradient-boosted trees: native categorical + gain importances
+pyarrow>=15           # parquet I/O for the cached tabular dataset
 torch
 matplotlib
 pyfluidsynth          # Python bindings for FluidSynth (needs the native lib above)
