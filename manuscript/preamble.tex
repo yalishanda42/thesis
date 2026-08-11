@@ -1,0 +1,73 @@
+% ============================================================
+%  Преамбюл — пакети, шрифтове, език (български), макроси
+%  Проектиран за XeLaTeX / Tectonic.
+% ============================================================
+
+% --- Шрифтове (Unicode, с поддръжка на кирилица) ----------
+% Вграденият пакет на Tectonic не съдържа кирилица в удебелените
+% разрези на LM/TeX Gyre, затова ползваме системни шрифтове на macOS
+% с пълна кирилица (Times New Roman / Arial / Courier New).
+% При компилиране на друга машина смени Path/имената на шрифтовете.
+\usepackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX}
+\defaultfontfeatures[\rmfamily,\sffamily,\ttfamily]{
+  Path           = /System/Library/Fonts/Supplemental/ ,
+  Extension      = .ttf ,
+  UprightFont    = * ,
+  BoldFont       = * Bold ,
+  ItalicFont     = * Italic ,
+  BoldItalicFont = * Bold Italic ,
+}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont{Courier New}
+
+% --- Език -------------------------------------------------
+% babel (а не polyglossia): под XeLaTeX не изисква всеки шрифт (вкл.
+% моноширинния) да декларира OpenType script „cyrl'', което иначе чупи
+% компилацията при латински думи в заглавия.
+\usepackage[english,bulgarian]{babel}
+
+% --- Геометрия и оформление -------------------------------
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{indentfirst}      % отстъп и на първия абзац (българска типография)
+\usepackage{microtype}
+
+% --- Математика -------------------------------------------
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+
+% --- Фигури, таблици, графики -----------------------------
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\captionsetup{font=small,labelfont=bf}
+
+% --- Код / листинги ---------------------------------------
+\usepackage{listings}
+\usepackage{xcolor}
+\definecolor{codegray}{gray}{0.95}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codegray},
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  captionpos=b,
+  showstringspaces=false,
+}
+
+% --- Хипервръзки (последно) -------------------------------
+\usepackage[hidelinks]{hyperref}
+
+% --- Удобни макроси ---------------------------------------
+\newcommand{\eng}[1]{\foreignlanguage{english}{#1}}   % за англ. термини в скоби
+\newcommand{\todo}[1]{\textbf{\color{red}[TODO: #1]}}

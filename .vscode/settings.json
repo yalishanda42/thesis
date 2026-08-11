@@ -1,0 +1,53 @@
+{
+  // ── LaTeX Workshop + Tectonic ──────────────────────────────
+  // Root файлът е в подпапка (manuscript/), затова ограничаваме
+  // търсенето на root само до него.
+  "latex-workshop.latex.search.rootFiles.include": [
+    "manuscript/main.tex"
+  ],
+
+  // Изходната папка (както в build.sh). %DIR% = папката на root файла.
+  "latex-workshop.latex.outDir": "%DIR%/build",
+
+  // Инструмент: Tectonic. Абсолютен път, защото стартиран от Dock,
+  // VS Code често няма ~/homebrew/bin в PATH. Смени пътя при нужда.
+  "latex-workshop.latex.tools": [
+    {
+      "name": "tectonic",
+      "command": "/Users/aleksandar.ignatov/homebrew/bin/tectonic",
+      "args": [
+        "-X", "compile",
+        "%DOC%.tex",
+        "--synctex",
+        "--keep-logs",
+        "--keep-intermediates",
+        "--outdir", "%OUTDIR%"
+      ],
+      "env": {}
+    }
+  ],
+
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "Tectonic",
+      "tools": ["tectonic"]
+    }
+  ],
+  "latex-workshop.latex.recipe.default": "first",
+
+  // Компилиране при запис; чист изглед в раздел на редактора.
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.view.pdf.viewer": "tab",
+
+  // ChkTeX/lacheck идват с пълен TeX Live, а ние ползваме само Tectonic
+  // (който не ги съдържа) — затова изключваме линтерите, за да няма
+  // изскачащи грешки „chktex could not be found''.
+  "latex-workshop.linting.chktex.enabled": false,
+  "latex-workshop.linting.lacheck.enabled": false,
+
+  // Tectonic сам чисти; тези разширения се пазят от „Clean''.
+  "latex-workshop.latex.clean.fileTypes": [
+    "*.aux", "*.bbl", "*.blg", "*.idx", "*.ind", "*.lof", "*.lot",
+    "*.out", "*.toc", "*.fls", "*.fdb_latexmk", "*.synctex.gz", "*.log"
+  ]
+}

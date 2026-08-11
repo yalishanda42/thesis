@@ -1,0 +1,48 @@
+% ============================================================
+%  Магистърска дипломна работа — ФМИ, СУ "Св. Климент Охридски"
+%  Компилира се с Tectonic / XeLaTeX (Unicode, кирилица).
+%    tectonic main.tex        (или ./build.sh)
+% ============================================================
+\documentclass[12pt,a4paper,oneside]{report}
+
+\input{preamble}
+
+% --- Метаданни на работата (редактирай тук) ---------------
+\newcommand{\thesisTitle}{Хуманизиране на динамиката (velocity) на барабанни партии чрез структурни и времеви признаци}
+\newcommand{\thesisAuthor}{Александър Игнатов}      % TODO: пълно име
+\newcommand{\thesisFacNo}{М?????}                    % TODO: факултетен номер
+\newcommand{\thesisProgram}{Изкуствен интелект}
+\newcommand{\thesisSupervisor}{проф./доц. д-р ?????}% TODO: научен ръководител
+\newcommand{\thesisCity}{София}
+\newcommand{\thesisDate}{\the\year}                  % TODO: месец година
+
+\begin{document}
+
+\input{titlepage}
+
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+% Незадължителна таблица с използвани понятия (както в примера на Ем. Станчев)
+\input{glossary}
+
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% --- Глави ------------------------------------------------
+\input{chapters/01-uvod}
+\input{chapters/02-teoretichna-osnova}
+\input{chapters/03-svarzani-razrabotki}
+\input{chapters/04-metod}
+\input{chapters/05-eksperimenti}
+\input{chapters/06-realizatsiya}
+\input{chapters/07-zaklyuchenie}
+
+% --- Библиография -----------------------------------------
+\bibliographystyle{ieeetr}   % номерирани цитати [n], както в примерите
+\bibliography{references}
+
+\end{document}

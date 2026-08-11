@@ -1,0 +1,16 @@
+# Компилационни артефакти (папката build/ се пази, за да съществува
+# за Tectonic/LaTeX Workshop; съдържанието ѝ се игнорира)
+build/*
+!build/.gitkeep
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.pdf
