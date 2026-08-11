@@ -28,7 +28,7 @@ from .midi import (
 from .voicemap import CANONICAL_VOICES, PITCH_TO_VOICE, voice_of, voice_index
 from .features import build_note_features
 from .baselines import GlobalMeanBaseline, LookupTableBaseline
-from .metrics import mae, rmse, evaluate
+from .metrics import mae, rmse, evaluate, wasserstein1d, hist_intersection
 from .viz import piano_roll, drums_roll
 from .playback import play_midi_file, play_midi_notes, set_soundfont, get_soundfont
 
@@ -51,6 +51,8 @@ __all__ = [
     "mae",
     "rmse",
     "evaluate",
+    "wasserstein1d",
+    "hist_intersection",
     "NUMERIC_FEATURES",
     "MAX_LEN",
     "build_genre_vocab",
@@ -58,6 +60,7 @@ __all__ = [
     "build_split_tensors",
     "scatter_predictions",
     "VelocityTransformer",
+    "warm_start_backbone",
     "piano_roll",
     "drums_roll",
     "play_midi_file",
@@ -79,6 +82,7 @@ _LAZY = {
     "build_split_tensors": "seqdata",
     "scatter_predictions": "seqdata",
     "VelocityTransformer": "model",
+    "warm_start_backbone": "model",
 }
 
 
