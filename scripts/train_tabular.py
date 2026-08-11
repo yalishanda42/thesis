@@ -8,6 +8,7 @@ import json
 import os
 import sys
 
+import joblib                     # noqa: E402
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt   # noqa: E402
@@ -21,6 +22,7 @@ from drumhumanizer.metrics import evaluate                                    # 
 
 PROC = os.path.join("data", "processed")
 OUT = os.path.join("docs", "plan_a")
+MODEL_PATH = os.path.join(PROC, "lightgbm_model.joblib")   # gitignored (under data/)
 CAT = ["voice", "genre", "style", "time_signature", "beat_type", "nearest_subdiv"]
 DROP = ["file_id", "drummer", "split", "onset_sec", "bar_index", "velocity"]
 SEED = 42
@@ -71,6 +73,13 @@ def main():
         pd.Series(model.feature_importances_, index=Xtr.columns)
         .sort_values(ascending=False).astype(int).to_dict()
     )
+
+    # persist the fitted model + train category levels so downstream inference
+    # (e.g. the audition notebook) can align categoricals exactly.
+    joblib.dump({"model": model, "cat_categories": cat_dtypes,
+                 "cat": CAT, "drop": DROP, "best_iteration": int(model.best_iteration_)},
+                MODEL_PATH)
+    print(f"saved model to {MODEL_PATH}")
 
     with open(os.path.join(OUT, "metrics.json"), "w") as fh:
         json.dump(results, fh, indent=2)
