@@ -35,6 +35,7 @@ from .seqdata import (
     build_split_tensors,
     scatter_predictions,
 )
+from .model import VelocityTransformer
 from .viz import piano_roll, drums_roll
 from .playback import play_midi_file, play_midi_notes, set_soundfont, get_soundfont
 
@@ -63,6 +64,7 @@ __all__ = [
     "bpm_stats",
     "build_split_tensors",
     "scatter_predictions",
+    "VelocityTransformer",
     "piano_roll",
     "drums_roll",
     "play_midi_file",
