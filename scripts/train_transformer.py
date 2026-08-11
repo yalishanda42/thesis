@@ -94,6 +94,11 @@ def main():
     bpm_mean, bpm_std = bpm_stats(train)
     print(f"genres: {len(genre_vocab)}  bpm mean/std: {bpm_mean:.1f}/{bpm_std:.1f}")
 
+    # sidecar so downstream inference (e.g. the audition notebook) can rebuild the
+    # exact train-fit genre vocab + bpm normalization without re-reading the parquet.
+    with open(os.path.join(PROC, "transformer_meta.json"), "w") as fh:
+        json.dump({"genre_vocab": genre_vocab, "bpm_mean": bpm_mean, "bpm_std": bpm_std}, fh, indent=2)
+
     t0 = time.time()
     tr_t = build_split_tensors(train, genre_vocab, bpm_mean, bpm_std)
     va_t = build_split_tensors(val, genre_vocab, bpm_mean, bpm_std)
