@@ -1,0 +1,48 @@
+{
+  "native_nll": 3.3059346303269344,
+  "discretized_nll": 3.3059346303269344,
+  "deterministic_readout": {
+    "mae": 27.980534243819317,
+    "rmse": 35.25102841277264,
+    "per_track_pearson": 0.4899848756335148,
+    "per_track_spearman": 0.47359607148042054,
+    "within_bar_spearman": 0.4887045432789998,
+    "mean_abs_std_diff": 10.103885908713671,
+    "global_std_ratio": 0.7056982060272305,
+    "per_genre_mae": {
+      "afrobeat": 29.671903894839176,
+      "funk": 29.895604208697673,
+      "hiphop": 23.72919787246965,
+      "jazz": 26.638037733150693,
+      "latin": 26.001094376912576,
+      "neworleans": 21.677011531241718,
+      "pop": 17.783137044410132,
+      "rock": 28.53690814389316,
+      "soul": 31.52764905121819
+    }
+  },
+  "sampled": {
+    "mae": 31.95608457524003,
+    "rmse": 41.23991160858272,
+    "per_track_pearson": 0.3092605776095583,
+    "per_track_spearman": 0.30268122189668867,
+    "within_bar_spearman": 0.3545432663546467,
+    "mean_abs_std_diff": 4.9254855452856035,
+    "global_std_ratio": 0.9209247731203568,
+    "per_genre_mae": {
+      "afrobeat": 32.42966345280479,
+      "funk": 33.20243982791188,
+      "hiphop": 28.907505315119725,
+      "jazz": 31.88101990640045,
+      "latin": 30.58010168021855,
+      "neworleans": 25.868775889815694,
+      "pop": 21.19857419579922,
+      "rock": 32.98998821550024,
+      "soul": 34.4973869574745
+    }
+  },
+  "sampled_wasserstein": 16.823417349156163,
+  "sampled_hist_intersection": 0.7882655279353088,
+  "best_epoch": -1,
+  "val_nll_curve": []
+}
