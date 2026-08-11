@@ -72,6 +72,31 @@ def test_nll_masks_padding():
     assert torch.allclose(loss_masked, loss_first_two, atol=1e-6)
 
 
+def test_init_mdn_head_spreads_means():
+    import torch.nn as nn
+    lin = nn.Linear(8, 3 * heads.MDN_K)
+    heads.init_mdn_head(lin)
+    # with zero input, raw == bias, so component means == the spread init
+    raw = lin.bias.detach().unsqueeze(0)          # [1, 3K]
+    _, mu, _ = heads._mdn_params(raw)
+    assert torch.allclose(mu[0], heads.MDN_MU_INIT, atol=1e-4)
+    # means are distinct and span a wide range (anti-symmetry)
+    assert mu[0].max() - mu[0].min() > 80
+
+
+def test_mdn_load_balance_penalizes_collapse():
+    K = heads.MDN_K
+    pad = torch.zeros(100, dtype=torch.bool)
+    # collapsed: huge logit on one component for every token
+    collapsed = torch.zeros(100, 3 * K); collapsed[:, 2] = 20.0
+    # balanced: equal pi logits
+    balanced = torch.zeros(100, 3 * K)
+    assert heads.mdn_load_balance(collapsed, pad) > heads.mdn_load_balance(balanced, pad)
+    # balanced usage is at (near) the minimum penalty
+    assert torch.isclose(heads.mdn_load_balance(balanced, pad),
+                         torch.tensor(math.log(1.0 / K)), atol=1e-4)
+
+
 def test_sample_is_in_range_and_reproducible():
     torch.manual_seed(0)
     for ht, raw in [("gaussian", torch.randn(50, 2)),

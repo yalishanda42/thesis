@@ -50,12 +50,39 @@ def _normal_cdf(x, mu, sigma):
 
 
 # ── MDN ─────────────────────────────────────────────────────────────────────
+# Component means spread across the velocity range so the K components start in
+# distinct regions and specialize — breaks the winner-take-all symmetry that
+# otherwise collapses the mixture to a single component.
+MDN_MU_INIT = torch.linspace(8.0, 120.0, MDN_K)
+_MDN_SIGMA_RAW_INIT = 9.0            # softplus(9)+1 ≈ 10 velocity units at init
+
+
 def _mdn_params(raw):
     r = raw.view(*raw.shape[:-1], 3, MDN_K)
     log_pi = torch.log_softmax(r[..., 0, :], dim=-1)
     mu = r[..., 1, :]
     sigma = F.softplus(r[..., 2, :]) + _SIGMA_FLOOR_MDN
     return log_pi, mu, sigma
+
+
+def init_mdn_head(linear):
+    """Initialize an MDN head Linear(d, 3K): spread the component-mean biases and
+    set a moderate initial sigma, so components specialize instead of collapsing."""
+    with torch.no_grad():
+        bias = torch.zeros(3 * MDN_K)
+        bias[MDN_K:2 * MDN_K] = MDN_MU_INIT               # mu block
+        bias[2 * MDN_K:] = _MDN_SIGMA_RAW_INIT            # sigma_raw block
+        linear.bias.copy_(bias)
+
+
+def mdn_load_balance(raw, pad_mask):
+    """Load-balancing penalty: negative entropy of the batch-averaged mixture
+    weights. Minimizing it maximizes average-usage entropy, so every component is
+    used *somewhere* (prevents collapse) without forcing each token to be multimodal.
+    A collapsed (one-hot average) mixture scores 0; uniform scores log(1/K)."""
+    log_pi, _, _ = _mdn_params(raw)
+    mean_pi = log_pi.exp()[~pad_mask].mean(0)             # [K]
+    return (mean_pi * mean_pi.clamp_min(1e-9).log()).sum()
 
 
 # ── per-token log-probability (each head's own measure) ──────────────────────

@@ -102,6 +102,8 @@ def main():
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--patience", type=int, default=3)
+    ap.add_argument("--load-balance", type=float, default=0.0,
+                    help="MDN only: weight on the load-balancing (anti-collapse) penalty")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--eval-only", action="store_true")
     ap.add_argument("--no-warm-start", action="store_true")
@@ -158,7 +160,10 @@ def main():
             for voice, genre, num, target, pad, row in tr_l:
                 opt.zero_grad()
                 raw = model(voice.to(device), genre.to(device), num.to(device), pad.to(device))
-                loss = heads.nll(head, raw, target.to(device), pad.to(device))
+                pad_d = pad.to(device)
+                loss = heads.nll(head, raw, target.to(device), pad_d)
+                if head == "mdn" and args.load_balance > 0:
+                    loss = loss + args.load_balance * heads.mdn_load_balance(raw, pad_d)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)   # MDN stability
                 opt.step()

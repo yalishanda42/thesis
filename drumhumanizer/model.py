@@ -7,7 +7,7 @@ import math
 import torch
 import torch.nn as nn
 
-from .heads import head_output_dim
+from .heads import head_output_dim, init_mdn_head
 from .seqdata import NUMERIC_FEATURES
 from .voicemap import CANONICAL_VOICES
 
@@ -43,6 +43,8 @@ class VelocityTransformer(nn.Module):
         self.encoder = nn.TransformerEncoder(layer, num_layers=n_layers,
                                              enable_nested_tensor=False)
         self.head = nn.Linear(d_model, head_output_dim(head))
+        if head == "mdn":
+            init_mdn_head(self.head)          # spread component means to avoid collapse
 
     def forward(self, voice_idx, genre_idx, num_feats, pad_mask):
         v = self.voice_emb(voice_idx)                     # [B, L, voice_emb]
