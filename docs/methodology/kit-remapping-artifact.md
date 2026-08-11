@@ -6,7 +6,9 @@ timing and (mostly) velocity. Our `build_dataset` pooled **all 43 kit-renderings
 `file_id`**, so every canonical voice is a 43-kit mixture of the same underlying gestures.
 This injects **label noise into the `voice` input feature** and is the likely cause of the
 systematic per-voice prediction biases seen in Plan E (e.g. closed-hh −13.8, side-stick
-+14.5). It is a **data artifact, not a model deficiency**. Velocity — the prediction target
++14.5). It is a **data artifact, not a model deficiency**. Notably, this **contradicts the
+E-GMD paper's** description that the 43 kits change only audio timbre — the released MIDI
+files show per-kit note remapping. Velocity — the prediction target
 — is essentially kit-invariant, so the humanization objective is unaffected, and because
 splits are per-performance there is **no train/test leakage**. Prior results are valid but
 rest on a 43× redundant, voice-noisy dataset.
@@ -69,6 +71,94 @@ treat a symptom**; the correct fix is at the data level (below).
 - **Target is safe.** Velocity is kit-invariant (barring added layer notes), so the
   humanization target and its distribution are well-defined regardless of this artifact.
 - **Voice feature is noisy.** The single most kit-contaminated model input is `voice`.
+
+## Cross-module context: this is general e-drum behavior, not a Roland quirk
+
+Web research into how e-drum modules encode hits confirms the E-GMD artifact is a specific
+case of a general reality across brands.
+
+1. **One physical pad → many MIDI notes is universal.** General MIDI defines only ~12
+   percussion slots (notes 35–81) with no room for ride bell, cross-stick, 4th tom, or
+   hi-hat edge, so every module extends beyond GM and emits a **different MIDI note per
+   zone/articulation**:
+   - **Roland TD-17** (corroborates what we see in E-GMD): snare pad → 38 head / 40 rim /
+     37 cross-stick; hi-hat → 42·22 closed bow·edge / 46·26 open bow·edge / 44 pedal; ride →
+     51 bow / 59 edge / 53 bell.
+   - **Yamaha DTX** (entry DTX402): kick 36, snare 38, rim 40, x-stick 37, closed-HH 42,
+     open-HH 46, foot-HH 44 — GM-aligned for core pads, but cymbal slots diverge; higher-end
+     DTX uses a proprietary map that "often conflicts with GM."
+   - **Alesis**: same principle, "fewer zone options than Roland or Yamaha."
+   The multi-note-per-pad behavior is inherent to e-drums, but the **specific
+   note↔articulation assignment differs by brand, model, and kit preset, and is
+   user-remappable.**
+
+2. **Velocity-switched pitch (note layering) is real.** Roland modules support "MIDI note
+   layering, where one pad triggers different notes at different velocities" (dynamic sample
+   switching). This is the extreme form of the original hypothesis — the *pitch* itself can
+   depend on velocity — and it is exactly what E-GMD's "Layered" kits (Big Room, Super Boom,
+   Raw Dnb) do, which is why their note/velocity multisets differ from the other kits.
+
+3. **Velocity is a shaped signal, not raw force.** Strike force → MIDI velocity passes
+   through the module's configurable pipeline: **sensitivity** (gain 1–32) → **velocity
+   curve** (LINEAR default; EXP1/2 emphasize hard hits; LOG1/2 emphasize soft; SPLINE
+   extreme; LOUD1/2 compressed) → **threshold** (floor gate). So the recorded velocity is
+   force *after* that curve — module- and setting-dependent.
+
+**Implications for this project.**
+
+- Our canonical `drumhumanizer/voicemap.py` is effectively a **brand-normalization layer**,
+  and it is necessary rather than optional. It works well because Roland (and entry Yamaha)
+  are GM-adjacent for core voices (kick/snare/hats); the messy parts are auxiliary/cymbal
+  zones and velocity-layered pads.
+- **Transferability is bounded.** A humanizer trained on E-GMD predicts velocities in the
+  **TD-17 note scheme + its velocity curve**. Applying it to another module needs (a) a
+  note→canonical-voice remap for that brand and (b) awareness that "loud" is defined relative
+  to a velocity curve. State this as an explicit assumption/limitation.
+- **But velocity *ordering* is curve-invariant.** Any monotonic velocity curve preserves the
+  rank order of hits, so *relative*-dynamics humanization transfers across modules even when
+  absolute calibration does not — consistent with the Plan D finding that relative dynamics
+  generalize but absolute level does not.
+
+Sources: General MIDI percussion map (en.wikipedia.org/wiki/General_MIDI); Roland TD-17
+mapping (github.com/mcfredrick/drum-transcription-training,
+`drum_transcription/ROLAND_MAPPING.md`); cross-brand differences, pad note-layering, and
+velocity curves (drumdash.com "MIDI Mapping 101"); Roland velocity-curve settings
+(edrums.github.io/en/roland/trigger_settings); Yamaha DTX402 default note map
+(manualzz/paperzz "DTX402K/432K/452K MIDI Reference"). The official Roland TD-17 MIDI
+Implementation PDF (static.roland.com) is AES-encrypted and could not be extracted directly;
+the GitHub reference corroborates its assignments.
+
+## The TD-17 patches, characterized empirically
+
+E-GMD re-recorded the original GMD performances on a **Roland TD-17** across **43 kits**
+(`kit_name` = the TD-17 patch name; 40 factory patches + `Custom1/2/3`), and is "the first
+[dataset] with human-performed velocity annotations" (Magenta E-GMD page; Callender et al.,
+*Improving Perceptual Quality of Drum Transcription…*, arXiv:2004.00188).
+
+**Paper vs. data discrepancy.** The paper frames the 43 kits as timbre variation over the
+*same* MIDI ("recorded 43 drumkits… aligned within 2ms of the original MIDI files"), implying
+fixed note assignments. **The released MIDI contradicts this** — patches remap pads, so the
+per-kit MIDI note streams genuinely differ. `kit_name` is therefore a real MIDI-content
+variable, not just an audio label, and our 43× pooling under one `file_id` mixes genuinely
+different note streams for the same performance.
+
+Profiling the raw MIDI of 6 performances (one per drummer) across all 43 patches:
+
+- **Electronic and Custom patches never emit side-stick.** `808 Simple`, `909 Simple`, and
+  `Custom1/2/3` produced pitch 37 in **0/6** performances — they remap cross-stick to the
+  snare pitch (or omit it). Acoustic patches emit it whenever the groove uses cross-stick.
+- **Some patches add auxiliary voices, matching their names.** `Compact Lite (w/ Tambourine
+  HH)` and `Dark Hybrid` emit **tambourine (pitch 54)** and remap **pedal-hh → aux-perc** in
+  4/6 performances; `Deep Daft` and `Big Room (Layered)` show the pedal-hh→aux-perc swap in
+  2/6. Patch names telegraph the remapping (`2nd Hi-Hat`, `w/ Tambourine HH`, `More Cowbell`,
+  `808/909 Simple`).
+- **Velocity is preserved across most patches**, but a few performances on the "Layered"
+  patches (`Big Room (Layered)`, `Super Boom (Layered)`, `Raw Dnb (Layered Hybrid)`) yield
+  differing note/velocity multisets, consistent with Roland's velocity-switched note layering.
+
+The upshot: the TD-17 patch set spans not just timbres but **different trigger→MIDI-note
+maps**, so treating `kit_name` as a pure audio choice (as the paper does) understates its
+effect on the symbolic data we train on.
 
 ## Recommended remedy (deferred)
 
