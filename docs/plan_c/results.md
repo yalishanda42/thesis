@@ -15,7 +15,7 @@ flattens; sampling from the learned distribution puts the variance back):
 | head | point std_ratio | **sampled std_ratio** |
 |------|----------------:|----------------------:|
 | Gaussian | 0.564 | 0.851 |
-| MDN | 0.504 | 0.868 |
+| MDN (anti-collapse) | 0.807 | **0.995** |
 | **Categorical** | 0.784 | **0.982** |
 
 ## Full comparison (test split)
@@ -33,14 +33,25 @@ histogram intersection (1 = identical distributions).
 | transformer det. (Plan B) | — | 19.56 | 0.605 | 0.612 | 0.895 | — | — |
 | Gaussian — point | 3.55 | 22.02 | 0.575 | 0.616 | 0.564 | — | — |
 | Gaussian — sample | 3.55 | 27.62 | 0.293 | 0.356 | 0.851 | 6.03 | 0.873 |
-| MDN — point | 3.47 | 22.60 | 0.537 | 0.611 | 0.504 | — | — |
-| MDN — sample | 3.47 | 29.02 | 0.240 | 0.298 | 0.868 | 6.44 | 0.877 |
+| MDN — point | 3.13 | 19.69 | 0.617 | 0.608 | 0.807 | — | — |
+| MDN — sample | 3.13 | 24.55 | 0.455 | 0.468 | 0.995 | 2.95 | 0.921 |
 | **Categorical — point** | **3.04** | **19.17** | **0.632** | **0.626** | 0.784 | — | — |
 | **Categorical — sample** | **3.04** | 24.16 | 0.468 | 0.483 | **0.982** | **1.49** | **0.947** |
 
-(Native NLL — Gaussian 4.93, MDN 4.85 — is a continuous density and not comparable to
-the categorical's discrete NLL; `disc_nll` is the fair cross-head number. Among the
-continuous heads MDN's multimodality gives a small NLL edge over Gaussian.)
+(Native NLL — Gaussian 4.93, MDN 4.47 — is a continuous density and not comparable to
+the categorical's discrete NLL; `disc_nll` is the fair cross-head number.)
+
+> **MDN mode-collapse fix.** The MDN was initially degenerate: diagnostics showed
+> π = `[0.007, 0, 0.993, 0, 0]` — one component carried 99.3% of the weight (effective
+> #components 1.03/5), so it behaved like a single broad Gaussian and its histogram was
+> indistinguishable from the Gaussian head's. Root cause was classic winner-take-all
+> collapse (symmetric head init + softmax rich-get-richer, amplified by warm-starting
+> from a point-optimized backbone). Fix: **spread the component-mean initialization**
+> across the velocity range + a **load-balancing penalty** on the batch-averaged π. The
+> retrained MDN uses 2.67/5 effective components with means spanning [14, 42, 64, 95,
+> 127] (ghost → accent), and its metrics jumped accordingly (sampled std_ratio
+> 0.868 → 0.995, W1 6.44 → 2.95, histI 0.877 → 0.921, disc-NLL 3.47 → 3.13). The numbers
+> above are the fixed model.
 
 ## Findings
 
@@ -59,11 +70,13 @@ continuous heads MDN's multimodality gives a small NLL edge over Gaussian.)
    accuracy/ranking; sample for realistic, human-like variance.** The categorical head
    is best under *both* readouts, so it is the recommended model.
 
-3. **Gaussian ≈ MDN, both behind categorical.** MDN's mixture gives a marginal NLL
-   improvement over the single Gaussian (multimodality), but its mixture-*mean* point
-   readout sits between modes (worst point std_ratio 0.504) and its continuous samples
-   match the true velocity histogram far worse than the categorical (W1 6.44 vs 1.49).
-   MDN trained stably (σ floor + grad clipping; no NaNs).
+3. **MDN (after the anti-collapse fix) clearly beats the Gaussian and rivals the
+   categorical.** Once its components stay alive, the mixture's genuine multimodality
+   shows: disc-NLL 3.13 (vs Gaussian 3.55, categorical 3.04), sampled std_ratio 0.995
+   (best of all heads) and much better distribution match than Gaussian (W1 2.95 vs
+   6.03, histI 0.921 vs 0.873). The categorical still edges it on W1/histI/NLL and is
+   simpler and stabler, but the MDN is now a legitimate multimodal model rather than a
+   disguised single Gaussian. It trained stably (σ floor + grad clipping; no NaNs).
 
 4. **Does the distribution earn its complexity?** For pure point accuracy, LightGBM
    (MAE 18.02) is still the strongest single number — but it is a *point* model and
