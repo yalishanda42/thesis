@@ -7,6 +7,7 @@ import math
 import torch
 import torch.nn as nn
 
+from .heads import head_output_dim
 from .seqdata import NUMERIC_FEATURES
 from .voicemap import CANONICAL_VOICES
 
@@ -23,8 +24,9 @@ def _sinusoidal_pos_enc(max_len: int, d_model: int) -> torch.Tensor:
 class VelocityTransformer(nn.Module):
     def __init__(self, n_genres, n_numeric=len(NUMERIC_FEATURES), n_voices=len(CANONICAL_VOICES),
                  d_model=128, n_heads=8, n_layers=4, dim_ff=256, dropout=0.1,
-                 voice_emb=8, genre_emb=16, max_len=512):
+                 voice_emb=8, genre_emb=16, max_len=512, head="deterministic"):
         super().__init__()
+        self.head_type = head
         self.voice_emb = nn.Embedding(n_voices, voice_emb)
         self.genre_emb = nn.Embedding(n_genres, genre_emb)
         self.input_proj = nn.Linear(voice_emb + genre_emb + n_numeric, d_model)
@@ -40,7 +42,7 @@ class VelocityTransformer(nn.Module):
         # identical and works on every device.
         self.encoder = nn.TransformerEncoder(layer, num_layers=n_layers,
                                              enable_nested_tensor=False)
-        self.head = nn.Linear(d_model, 1)
+        self.head = nn.Linear(d_model, head_output_dim(head))
 
     def forward(self, voice_idx, genre_idx, num_feats, pad_mask):
         v = self.voice_emb(voice_idx)                     # [B, L, voice_emb]
@@ -50,4 +52,19 @@ class VelocityTransformer(nn.Module):
         x = x + self.pos_enc[: x.size(1)].unsqueeze(0)    # add positional encoding
         x = self.dropout(x)
         x = self.encoder(x, src_key_padding_mask=pad_mask)
-        return self.head(x).squeeze(-1)                   # [B, L]
+        out = self.head(x)                                # [B, L, out_dim]
+        if self.head_type == "deterministic":
+            return out.squeeze(-1)                        # [B, L] — Plan B behavior
+        return out                                        # [B, L, out_dim]
+
+
+def warm_start_backbone(model, ckpt_path):
+    """Load Plan-B backbone weights (dropping the head) into ``model``.
+
+    Returns ``(missing, unexpected)`` from ``load_state_dict(strict=False)``;
+    ``missing`` should be exactly the new head's parameters.
+    """
+    ck = torch.load(ckpt_path, map_location="cpu")
+    state = ck.get("best_model", ck)
+    backbone = {k: v for k, v in state.items() if not k.startswith("head.")}
+    return model.load_state_dict(backbone, strict=False)

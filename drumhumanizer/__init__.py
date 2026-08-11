@@ -58,6 +58,7 @@ __all__ = [
     "build_split_tensors",
     "scatter_predictions",
     "VelocityTransformer",
+    "warm_start_backbone",
     "piano_roll",
     "drums_roll",
     "play_midi_file",
@@ -79,6 +80,7 @@ _LAZY = {
     "build_split_tensors": "seqdata",
     "scatter_predictions": "seqdata",
     "VelocityTransformer": "model",
+    "warm_start_backbone": "model",
 }
 
 
