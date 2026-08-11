@@ -60,3 +60,92 @@ def nearest_subdivision(phase_beat: np.ndarray) -> np.ndarray:
         scaled = phase_beat * d
         dists[i] = np.abs(scaled - np.round(scaled)) / d
     return np.array(names, dtype=object)[np.argmin(dists, axis=0)]
+
+
+import pandas as pd
+
+from .voicemap import CANONICAL_VOICES, voice_of
+
+
+def _log_clip_beats(delta_beats: np.ndarray) -> np.ndarray:
+    return np.log1p(np.clip(delta_beats, 0.0, TIME_DELTA_CLIP_BEATS))
+
+
+def build_note_features(note_array, meta) -> pd.DataFrame:
+    """One structural feature row per note (design §4). No velocity leakage."""
+    order = np.argsort(note_array["onset_sec"], kind="stable")
+    na = note_array[order]
+    onset = na["onset_sec"].astype(float)
+    pitch = na["pitch"].astype(int)
+    n = len(na)
+
+    bpm = float(meta["bpm"])
+    beat_dur = 60.0 / bpm
+    bpb = beats_per_bar(meta["time_signature"])
+    onset_beats = onset / beat_dur
+
+    phase_beat, phase_bar = metrical_phase(onset, bpm, bpb)
+    voices = np.array([voice_of(p) for p in pitch], dtype=object)
+
+    # global consecutive deltas (any voice), in beats
+    to_prev = np.full(n, TIME_DELTA_CLIP_BEATS)
+    to_next = np.full(n, TIME_DELTA_CLIP_BEATS)
+    if n > 1:
+        d = np.diff(onset_beats)
+        to_prev[1:] = d
+        to_next[:-1] = d
+
+    # same-voice consecutive deltas, in beats
+    sv_prev = np.full(n, TIME_DELTA_CLIP_BEATS)
+    sv_next = np.full(n, TIME_DELTA_CLIP_BEATS)
+    for v in set(voices):
+        idx = np.where(voices == v)[0]
+        if idx.size > 1:
+            dv = np.diff(onset_beats[idx])
+            sv_prev[idx[1:]] = dv
+            sv_next[idx[:-1]] = dv
+
+    # simultaneity multi-hot + count, and ±1-beat density (vectorized via searchsorted)
+    lo = np.searchsorted(onset_beats, onset_beats - SIMULTANEITY_TOL_BEATS, side="left")
+    hi = np.searchsorted(onset_beats, onset_beats + SIMULTANEITY_TOL_BEATS, side="right")
+    dlo = np.searchsorted(onset_beats, onset_beats - 1.0, side="left")
+    dhi = np.searchsorted(onset_beats, onset_beats + 1.0, side="right")
+    simult_count = hi - lo
+    density = dhi - dlo
+    multihot = {f"simult_{v}": np.zeros(n, dtype=np.int8) for v in CANONICAL_VOICES}
+    for i in range(n):
+        for j in range(lo[i], hi[i]):
+            multihot[f"simult_{voices[j]}"][i] = 1
+
+    style = str(meta["style"])
+    out = pd.DataFrame({
+        "file_id": str(meta["id"]),
+        "drummer": str(meta["drummer"]),
+        "split": str(meta["split"]),
+        "onset_sec": onset,
+        "bar_index": np.floor(onset / (beat_dur * bpb)).astype(int),
+        "velocity": na["velocity"].astype(int),
+        "voice": voices,
+        "genre": style.split("/")[0],
+        "style": style,
+        "time_signature": str(meta["time_signature"]),
+        "beat_type": str(meta["beat_type"]),
+        "nearest_subdiv": nearest_subdivision(phase_beat),
+        "phase_beat": phase_beat,
+        "phase_bar": phase_bar,
+        "sin_beat": np.sin(2 * np.pi * phase_beat),
+        "cos_beat": np.cos(2 * np.pi * phase_beat),
+        "sin_bar": np.sin(2 * np.pi * phase_bar),
+        "cos_bar": np.cos(2 * np.pi * phase_bar),
+        "swing_ratio": swing_ratio(phase_beat),
+        "log_time_to_prev": _log_clip_beats(to_prev),
+        "log_time_to_next": _log_clip_beats(to_next),
+        "log_same_voice_prev": _log_clip_beats(sv_prev),
+        "log_same_voice_next": _log_clip_beats(sv_next),
+        "simult_count": simult_count.astype(int),
+        "density_1beat": density.astype(int),
+        "bpm": bpm,
+    })
+    for name, col in multihot.items():
+        out[name] = col
+    return out
