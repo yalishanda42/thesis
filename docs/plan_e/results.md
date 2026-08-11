@@ -94,8 +94,11 @@ The point estimator pulls soft notes up and loud notes down toward the condition
    in-model evidence for the sampling design.
 3. **Error is instrument-driven, not time-driven**: hardest on intrinsically variable
    voices (ride-bell, side-stick, hats), flat across metrical position.
-4. **Concrete calibration targets**: closed-hh (too soft) and side-stick (too loud) have
-   large systematic per-voice biases worth correcting.
+4. **Per-voice biases are largely a data artifact**: closed-hh (too soft) and side-stick
+   (too loud) have large systematic biases — but these trace to E-GMD's multi-kit rendering,
+   which remaps pads to different voices per kit and scrambles the `voice` label. See
+   `docs/methodology/kit-remapping-artifact.md`. The fix is at the data level (single-kit
+   rebuild), not per-voice recalibration.
 5. **Embeddings are interpretable**: voice space recovers instrument families (esp.
    hi-hats); genre space captures dynamic-behavior similarity more than a genre taxonomy.
 
