@@ -37,7 +37,7 @@ def _build_roll(notes):
     return roll, min_pitch
 
 
-def piano_roll(notes, is_drums=False, figsize=(15, 12), show=True):
+def piano_roll(notes, is_drums=False, figsize=(15, 12), show=True, vmin=None, vmax=None):
     """Plot a piano-roll (or drum-roll) with a velocity colorbar.
 
     Parameters
@@ -51,11 +51,17 @@ def piano_roll(notes, is_drums=False, figsize=(15, 12), show=True):
         Matplotlib figure size.
     show:
         Call ``plt.show()`` before returning (set ``False`` to compose figures).
+    vmin, vmax:
+        Fixed colour-scale bounds on the normalized velocity (``0..1``). Leave as
+        ``None`` to autoscale each figure to its own data. Pass ``vmin=0, vmax=1``
+        to make the colour scale absolute (velocity ``0..127``) and directly
+        comparable across figures — the colorbar labels then read true velocities.
     """
     roll, min_pitch = _build_roll(notes)
 
     plt.figure(figsize=figsize)
-    plt.imshow(roll, aspect="auto", origin="lower", interpolation="none", cmap="Reds")
+    plt.imshow(roll, aspect="auto", origin="lower", interpolation="none", cmap="Reds",
+               vmin=vmin, vmax=vmax)
     plt.xlabel("time (MIDI ticks)")
     plt.ylabel("drum kit piece" if is_drums else "pitch")
 
