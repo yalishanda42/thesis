@@ -25,6 +25,7 @@ from .midi import (
 )
 from .voicemap import CANONICAL_VOICES, PITCH_TO_VOICE, voice_of, voice_index
 from .features import build_note_features
+from .baselines import GlobalMeanBaseline, LookupTableBaseline
 from .viz import piano_roll, drums_roll
 from .playback import play_midi_file, play_midi_notes, set_soundfont, get_soundfont
 
@@ -42,6 +43,8 @@ __all__ = [
     "voice_of",
     "voice_index",
     "build_note_features",
+    "GlobalMeanBaseline",
+    "LookupTableBaseline",
     "piano_roll",
     "drums_roll",
     "play_midi_file",
