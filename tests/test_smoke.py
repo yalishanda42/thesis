@@ -49,6 +49,18 @@ def test_drum_map_known_pieces():
     assert DRUM_MIDI_NAME[42] == "Closed Hi Hat"
 
 
+def test_drum_name_covers_egmd_extras():
+    from drumhumanizer import drum_name
+
+    # General MIDI pitch resolves via the GM map
+    assert drum_name(36) == "Bass Drum 1"
+    # E-GMD Roland hi-hat edge articulations (outside GM) resolve too
+    assert "Edge" in drum_name(22)
+    assert "Edge" in drum_name(26)
+    # unknown pitch degrades gracefully
+    assert drum_name(3) == "(unmapped 3)"
+
+
 def test_load_note_array_and_midinote():
     notes = load_note_array(_first_drum_file())
     assert len(notes) > 0

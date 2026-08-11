@@ -134,6 +134,24 @@ DRUM_MIDI_NAME = {
 }
 
 
+# E-GMD is recorded on a Roland TD-series electronic kit, which emits a few
+# articulation pitches *outside* the General MIDI percussion range (notably the
+# hi-hat "edge" hits). These appear in the data but are not in DRUM_MIDI_NAME.
+EGMD_EXTRA_MIDI_NAME = {
+    22: "Hi-Hat Closed (Edge)",
+    26: "Hi-Hat Open (Edge)",
+}
+
+
+def drum_name(midi_number: int) -> str:
+    """Human-readable drum name for a pitch, covering GM *and* E-GMD extras."""
+    if midi_number in DRUM_MIDI_NAME:
+        return DRUM_MIDI_NAME[midi_number]
+    if midi_number in EGMD_EXTRA_MIDI_NAME:
+        return EGMD_EXTRA_MIDI_NAME[midi_number]
+    return f"(unmapped {midi_number})"
+
+
 TONES_FORMAT = [
     "C{octave}",
     "C#{octave}/Db{octave}",

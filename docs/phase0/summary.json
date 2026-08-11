@@ -1,0 +1,53 @@
+{
+  "n_train_files": 35217,
+  "n_failed": 0,
+  "n_notes": 11070345,
+  "n_pitches_used": 25,
+  "median_train_bpm": 110.0,
+  "simultaneity_tol": {
+    "near_zero_valley_exists": false,
+    "recommended_tol_beats": 0.02,
+    "recommended_tol_ms_at_median_bpm": 10.9
+  },
+  "subdivision_valley": {
+    "beats": 0.149,
+    "ms_at_median_bpm": 47.8,
+    "note": "ornament vs 16th-grid boundary; supports the no-grid design (\u00a72)"
+  },
+  "categorical_audit": {
+    "n_train_files": 35217,
+    "style_nunique": 61,
+    "style_top_genre_nunique": 17,
+    "style_top10": {
+      "rock": 8686,
+      "hiphop": 3182,
+      "funk": 2451,
+      "punk": 1935,
+      "neworleans/funk": 1505,
+      "jazz": 1462,
+      "rock/halftime": 1247,
+      "latin/brazilian-baiao": 1075,
+      "funk/purdieshuffle": 989,
+      "afrocuban/bembe": 989
+    },
+    "time_signature": {
+      "4-4": 34787,
+      "3-4": 172,
+      "6-8": 172,
+      "5-4": 43,
+      "5-8": 43
+    },
+    "time_signature_44_pct": 98.779,
+    "time_signature_non44_pct": 1.221,
+    "beat_type": {
+      "fill": 21629,
+      "beat": 13588
+    },
+    "bpm": {
+      "min": 50.0,
+      "max": 290.0,
+      "mean": 109.98,
+      "std": 24.28
+    }
+  }
+}
