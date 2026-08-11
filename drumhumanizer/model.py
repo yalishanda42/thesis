@@ -34,7 +34,12 @@ class VelocityTransformer(nn.Module):
             d_model=d_model, nhead=n_heads, dim_feedforward=dim_ff,
             dropout=dropout, batch_first=True,
         )
-        self.encoder = nn.TransformerEncoder(layer, num_layers=n_layers)
+        # enable_nested_tensor=False: the nested-tensor fast path calls
+        # aten::_nested_tensor_from_mask_left_aligned, which is unimplemented on
+        # MPS. It is only a padding-skip optimization; disabling it keeps outputs
+        # identical and works on every device.
+        self.encoder = nn.TransformerEncoder(layer, num_layers=n_layers,
+                                             enable_nested_tensor=False)
         self.head = nn.Linear(d_model, 1)
 
     def forward(self, voice_idx, genre_idx, num_feats, pad_mask):
