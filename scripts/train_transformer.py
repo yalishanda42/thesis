@@ -27,9 +27,7 @@ from drumhumanizer.seqdata import (                                             
 )
 
 PROC = os.path.join("data", "processed")
-OUT = os.path.join("docs", "plan_b")
 PLAN_A = os.path.join("docs", "plan_a", "metrics.json")
-CKPT = os.path.join(PROC, "transformer_best.pt")   # gitignored (under data/)
 SEED = 42
 KEYS = ["voice_idx", "genre_idx", "num_feats", "target", "pad_mask", "row_idx"]
 
@@ -45,8 +43,8 @@ def _device():
     return torch.device("cpu")
 
 
-def _load(split):
-    return pd.read_parquet(os.path.join(PROC, f"egmd_tabular_{split}.parquet"))
+def _load(split, stem="tabular"):
+    return pd.read_parquet(os.path.join(PROC, f"egmd_{stem}_{split}.parquet"))
 
 
 def _loader(tensors, batch_size, shuffle):
@@ -81,22 +79,34 @@ def main():
                     help="resume model+optimizer+progress from the checkpoint")
     ap.add_argument("--eval-only", action="store_true",
                     help="skip training; load the best checkpoint and evaluate")
+    ap.add_argument("--tag", default="",
+                    help="dataset stem + ckpt/meta suffix, e.g. 'holdout' reads "
+                         "egmd_holdout_*.parquet and writes transformer_best_holdout.pt")
+    ap.add_argument("--out", default="",
+                    help="results dir (default docs/plan_b, or docs/plan_b_<tag>)")
     args = ap.parse_args()
+
+    stem = args.tag or "tabular"
+    suffix = f"_{args.tag}" if args.tag else ""
+    OUT = args.out or (os.path.join("docs", "plan_b") if not args.tag
+                       else os.path.join("docs", f"plan_b_{args.tag}"))
+    CKPT = os.path.join(PROC, f"transformer_best{suffix}.pt")   # gitignored (under data/)
+    META = os.path.join(PROC, f"transformer_meta{suffix}.json")
 
     os.makedirs(OUT, exist_ok=True)
     torch.manual_seed(SEED)
     np.random.seed(SEED)
     device = _device()
-    print(f"device: {device}")
+    print(f"device: {device}  tag: {args.tag or '(default)'}  data stem: egmd_{stem}_*")
 
-    train, val, test = _load("train"), _load("validation"), _load("test")
+    train, val, test = _load("train", stem), _load("validation", stem), _load("test", stem)
     genre_vocab = build_genre_vocab(train)
     bpm_mean, bpm_std = bpm_stats(train)
     print(f"genres: {len(genre_vocab)}  bpm mean/std: {bpm_mean:.1f}/{bpm_std:.1f}")
 
     # sidecar so downstream inference (e.g. the audition notebook) can rebuild the
     # exact train-fit genre vocab + bpm normalization without re-reading the parquet.
-    with open(os.path.join(PROC, "transformer_meta.json"), "w") as fh:
+    with open(META, "w") as fh:
         json.dump({"genre_vocab": genre_vocab, "bpm_mean": bpm_mean, "bpm_std": bpm_std}, fh, indent=2)
 
     t0 = time.time()

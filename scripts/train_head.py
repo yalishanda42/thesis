@@ -29,8 +29,6 @@ from drumhumanizer.seqdata import (                                             
 )
 
 PROC = os.path.join("data", "processed")
-OUT = os.path.join("docs", "plan_c")
-BACKBONE = os.path.join(PROC, "transformer_best.pt")
 SEED = 42
 KEYS = ["voice_idx", "genre_idx", "num_feats", "target", "pad_mask", "row_idx"]
 
@@ -44,8 +42,8 @@ def _free(device):
         torch.mps.empty_cache()
 
 
-def _load(split):
-    return pd.read_parquet(os.path.join(PROC, f"egmd_tabular_{split}.parquet"))
+def _load(split, stem="tabular"):
+    return pd.read_parquet(os.path.join(PROC, f"egmd_{stem}_{split}.parquet"))
 
 
 def _loader(t, bs, shuffle):
@@ -107,18 +105,28 @@ def main():
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--eval-only", action="store_true")
     ap.add_argument("--no-warm-start", action="store_true")
+    ap.add_argument("--tag", default="",
+                    help="dataset stem + ckpt/backbone suffix, e.g. 'holdout' reads "
+                         "egmd_holdout_*.parquet and warm-starts transformer_best_holdout.pt")
+    ap.add_argument("--out", default="",
+                    help="results dir (default docs/plan_c, or docs/plan_c_<tag>)")
     args = ap.parse_args()
 
     head = args.head
-    out_dir = os.path.join(OUT, head)
+    stem = args.tag or "tabular"
+    suffix = f"_{args.tag}" if args.tag else ""
+    base_out = args.out or (os.path.join("docs", "plan_c") if not args.tag
+                            else os.path.join("docs", f"plan_c_{args.tag}"))
+    backbone = os.path.join(PROC, f"transformer_best{suffix}.pt")
+    out_dir = os.path.join(base_out, head)
     os.makedirs(out_dir, exist_ok=True)
-    ckpt = os.path.join(PROC, f"head_{head}.pt")
+    ckpt = os.path.join(PROC, f"head_{head}{suffix}.pt")
     torch.manual_seed(SEED)
     np.random.seed(SEED)
     device = _device()
-    print(f"device: {device}  head: {head}")
+    print(f"device: {device}  head: {head}  tag: {args.tag or '(default)'}")
 
-    train, val, test = _load("train"), _load("validation"), _load("test")
+    train, val, test = _load("train", stem), _load("validation", stem), _load("test", stem)
     genre_vocab = build_genre_vocab(train)
     bpm_mean, bpm_std = bpm_stats(train)
     t0 = time.time()
@@ -146,9 +154,9 @@ def main():
             best_val, best_epoch = ck["best_val"], ck["best_epoch"]
             start, curve, bad, best_state = ck["epochs_done"], list(ck["curve"]), ck["bad"], ck["best_model"]
             print(f"resumed at epoch {start} (best_val {best_val:.4f})")
-        elif not args.no_warm_start and os.path.exists(BACKBONE):
-            missing, unexpected = warm_start_backbone(model, BACKBONE)
-            print(f"warm-started backbone from {BACKBONE} (fresh: {list(missing)})")
+        elif not args.no_warm_start and os.path.exists(backbone):
+            missing, unexpected = warm_start_backbone(model, backbone)
+            print(f"warm-started backbone from {backbone} (fresh: {list(missing)})")
 
         ran = 0
         for epoch in range(start + 1, args.epochs + 1):
