@@ -23,6 +23,7 @@ from .midi import (
     midi_number_to_tone,
     load_note_array,
 )
+from .voicemap import CANONICAL_VOICES, PITCH_TO_VOICE, voice_of, voice_index
 from .viz import piano_roll, drums_roll
 from .playback import play_midi_file, play_midi_notes, set_soundfont, get_soundfont
 
@@ -35,6 +36,10 @@ __all__ = [
     "drum_name",
     "midi_number_to_tone",
     "load_note_array",
+    "CANONICAL_VOICES",
+    "PITCH_TO_VOICE",
+    "voice_of",
+    "voice_index",
     "piano_roll",
     "drums_roll",
     "play_midi_file",
