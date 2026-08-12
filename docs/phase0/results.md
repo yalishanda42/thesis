@@ -13,7 +13,7 @@ recommendations flagged **[decision]** for sign-off.
 .venv/bin/python -m pytest tests/test_phase0.py -q           # pure-function unit tests
 ```
 
-Logic lives in `drumhumanizer/phase0.py` (pure, unit-tested aggregation) driven by
+Logic lives in `ml/src/drum_dynamics/research/phase0.py` (pure, unit-tested aggregation) driven by
 `scripts/phase0_analysis.py` (parallel scan → artifacts). All artifacts are in this folder:
 `aggregates.npz` (raw mergeable counts), `pitch_velocity.csv`, `summary.json`, and four figures.
 
@@ -22,7 +22,7 @@ Logic lives in `drumhumanizer/phase0.py` (pure, unit-tested aggregation) driven 
 ## Deliverable 1 — Pitch usage & velocity distributions → voice grouping
 
 25 GM pitches appear. Two are **outside General MIDI** — the Roland kit's hi-hat *edge*
-articulations (pitch 22, 26), now named via `drumhumanizer.midi.drum_name`. Full table:
+articulations (pitch 22, 26), now named via `drum_dynamics.core.midi.drum_name`. Full table:
 `pitch_velocity.csv`; see `fig_pitch_counts.png` and `fig_velocity_dists.png`.
 
 | pitch | voice | count | share % | vel μ | vel σ | median | p10 | p90 |

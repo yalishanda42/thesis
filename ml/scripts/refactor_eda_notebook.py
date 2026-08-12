@@ -1,4 +1,4 @@
-"""Rewrite notebooks/eda.ipynb to import helpers from the drum_dynamics package.
+"""Rewrite ml/notebooks/eda.ipynb to import helpers from the drum_dynamics package.
 
 Replaces the inline helper-definition cells (Idx/MidiNote, DRUM_MIDI_NAME,
 drums_roll, play_midi_*) with imports, points paths at the local dataset, and
@@ -9,7 +9,7 @@ minor index drift.
 import json
 from pathlib import Path
 
-NB = Path("notebooks/eda.ipynb")
+NB = Path("ml/notebooks/eda.ipynb")
 
 
 def code(src: str):
@@ -27,7 +27,7 @@ REPLACEMENTS = {
         "#   unzip -nq data/e-gmd-v1.0.0-midi.zip -d data/e-gmd"
     ),
     "DATASET_BASE_PATH = os.path.join('..', 'input'": (
-        "DATASET_BASE_PATH = os.path.join('..', 'data', 'e-gmd', 'e-gmd-v1.0.0')\n"
+        "DATASET_BASE_PATH = os.path.join('..', '..', 'data', 'e-gmd', 'e-gmd-v1.0.0')\n"
         "DATASET_METADATA_PATH = os.path.join(DATASET_BASE_PATH, 'e-gmd-v1.0.0.csv')"
     ),
     "!pip3 install music21 partitura scikit-learn torch matplotlib": (
@@ -70,7 +70,7 @@ REPLACEMENTS = {
         "# pyfluidsynth is installed via ../requirements.txt."
     ),
     "!wget -nc -P sf/big/": (
-        "# A General MIDI soundfont (with a drum kit) is expected at ../sf/big/FluidR3_GM.sf2.\n"
+        "# A General MIDI soundfont (with a drum kit) is expected at ../../sf/big/FluidR3_GM.sf2.\n"
         "# To download it locally, run from the repo root:\n"
         "#   mkdir -p sf/big && curl -fL -o sf/big/FluidR3_GM.sf2 \\\n"
         "#     'https://raw.githubusercontent.com/urish/cinto/master/media/FluidR3%20GM.sf2'"

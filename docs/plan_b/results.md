@@ -4,7 +4,7 @@ Non-autoregressive Transformer (design §5/§6 model 2) predicting every note's
 velocity in a single parallel pass from **structural features only** (drum-part +
 genre embeddings, sin/cos metrical phase, z-scored bpm, log delta-time-to-prev,
 same-onset flag). Trained on E-GMD `train`, early-checkpointed on `validation`,
-evaluated on the held-out `test` split with the shared `drumhumanizer.metrics`
+evaluated on the held-out `test` split with the shared `drum_dynamics.eval.metrics`
 harness — the same one used for Plan A, so the numbers are directly comparable.
 
 Config: `d_model=128`, 4 layers, 8 heads, window `MAX_LEN=512`, AdamW `lr=3e-4`,

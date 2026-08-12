@@ -20,7 +20,7 @@ Each performance was played back through the drum module under all 43 kit preset
 resulting MIDI re-captured; there is one `.midi` file per (performance × kit).
 
 `scripts/build_dataset.py` iterates every CSV row (all 45,537 MIDI files) and sets
-`file_id = meta["id"]` (`drumhumanizer/features.py:122`). Since `id` is the performance id —
+`file_id = meta["id"]` (`ml/src/drum_dynamics/data/features.py:122`). Since `id` is the performance id —
 shared by all 43 kit renderings — **each `file_id` aggregates 43 renderings of the same
 groove**.
 
@@ -106,7 +106,7 @@ case of a general reality across brands.
 
 **Implications for this project.**
 
-- Our canonical `drumhumanizer/voicemap.py` is effectively a **brand-normalization layer**,
+- Our canonical `ml/src/drum_dynamics/core/voicemap.py` is effectively a **brand-normalization layer**,
   and it is necessary rather than optional. It works well because Roland (and entry Yamaha)
   are GM-adjacent for core voices (kick/snare/hats); the messy parts are auxiliary/cymbal
   zones and velocity-layered pads.
@@ -174,8 +174,8 @@ should be explicit, not accidental.
 
 ```python
 import pandas as pd, os, warnings; warnings.simplefilter("ignore")
-from drumhumanizer.midi import load_note_array
-from drumhumanizer.voicemap import voice_of
+from drum_dynamics.core.midi import load_note_array
+from drum_dynamics.core.voicemap import voice_of
 m = pd.read_csv("data/e-gmd/e-gmd-v1.0.0/e-gmd-v1.0.0.csv")
 base = "data/e-gmd/e-gmd-v1.0.0"
 sub = m[m["id"] == "drummer1/eval_session/1"]          # 43 kit renderings

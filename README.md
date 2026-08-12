@@ -1,32 +1,34 @@
-# Humanizing Drum Dynamics
+# Dynamics Needed
 
 Master's thesis project: **given a MIDI drum track, predict each note's
-"best-fitting" velocity** — i.e. *humanizing dynamics*, analogous to the
-tempo/timing humanization that already exists. Focus dataset: the
+"best-fitting" velocity** — restoring/​predicting drum *dynamics* (as opposed to
+tempo/timing humanization). Focus dataset: the
 [Expanded Groove MIDI Dataset (E-GMD)](https://magenta.tensorflow.org/datasets/e-gmd).
 
-## Layout
+## Monorepo layout
 
 ```
-drumhumanizer/        Reusable helpers (extracted from the notebooks)
-  midi.py             MidiNote/Idx wrappers, GM drum map, load_note_array
-  viz.py              piano_roll / drums_roll
-  playback.py         In-notebook audio via FluidSynth
-notebooks/eda.ipynb   Drums EDA of E-GMD (imports drumhumanizer)
-tests/                Smoke tests against a real E-GMD file
-legacy_notebooks/     Original proof-of-concept (poc.ipynb: piano + drums LSTM); superseded
-
+ml/            Python: ML models + research + training (package: drum_dynamics)
+  src/drum_dynamics/  core/ data/ models/ eval/ viz/ research/
+  scripts/            training + dataset builders + publish_model.py
+  notebooks/          EDA
+  tests/
+plugin/        C++ DAW plugin "Dynamics Needed"  (not yet scaffolded)
+web/           React landing page                 (not yet scaffolded)
+manuscript/    LaTeX/PDF thesis
+docs/          research notes & results
+data/  sf/     dataset + soundfonts (gitignored)
 ```
 
 ## Setup
 
 ```bash
-# 1. Python environment
+# 1. Python environment + editable install of the ml package
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -e ml/                 # add [notebooks] for jupyter: -e ml/[notebooks]
 
 # 2. Native FluidSynth library (for playback)
-brew install fluid-synth          # macOS   (Debian: apt-get install fluidsynth)
+brew install fluid-synth                      # macOS   (Debian: apt-get install fluidsynth)
 
 # 3. Dataset (~100 MB) -> data/e-gmd/  (gitignored)
 mkdir -p data
@@ -40,16 +42,30 @@ curl -fL -o sf/big/FluidR3_GM.sf2 \
   'https://raw.githubusercontent.com/urish/cinto/master/media/FluidR3%20GM.sf2'
 ```
 
-> The soundfont link in the original notebook (keymusician01 S3) is dead (404);
-> the `urish/cinto` mirror above is the same FluidR3_GM bank.
+> The original keymusician01 S3 soundfont link is dead (404); the `urish/cinto`
+> mirror above is the same FluidR3_GM bank.
 
 ## Verify
 
+Run from the repo root:
+
 ```bash
-.venv/bin/python -m pytest tests/ -v            # 6 smoke tests
-.venv/bin/jupyter nbconvert --to notebook --execute --inplace \
-  --ExecutePreprocessor.kernel_name=thesis-venv notebooks/eda.ipynb
+.venv/bin/python -m pytest ml/tests/ -v
 ```
 
-Register the venv kernel once with:
-`.venv/bin/python -m ipykernel install --user --name thesis-venv`.
+## Publishing models to Hugging Face
+
+The source lives in this monorepo; trained weights are published to a separate
+HF **model** repo (git+LFS on the Hub) — HF holds artifacts, not the codebase.
+
+```bash
+.venv/bin/hf auth login                       # once
+.venv/bin/python ml/scripts/publish_model.py \
+  --repo <namespace>/dynamics-needed \
+  --artifact data/processed/transformer_best.pt \
+  --path-in-repo model.pt
+```
+
+Load weights back in code / from the plugin backend with `hf download
+<namespace>/dynamics-needed`. E-GMD already exists on the Hub — link it, don't
+re-upload.

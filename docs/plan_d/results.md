@@ -6,7 +6,7 @@ every test file the model saw that same drummer's style during training. Does th
 humanizer generalize to a **player it has never heard**?
 
 **Design.** Re-partition the featurized rows so two drummers form a drummer-disjoint
-test set and never appear in train/val (`drumhumanizer/holdout.py`,
+test set and never appear in train/val (`ml/src/drum_dynamics/data/holdout.py`,
 `scripts/build_holdout_split.py`). We hold out **drummer3 + drummer8**. Neither is the
 unique source of any genre, so **all 17 genres remain in training** (genre
 differentiation — more important than any single drummer — is preserved). drummer1 and

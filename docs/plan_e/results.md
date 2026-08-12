@@ -4,7 +4,7 @@ Does the model learn *musical* structure, or just fit numbers? And where does it
 We analyze the recommended **categorical (32-bin) transformer** on the in-distribution
 E-GMD **test** split (1.56 M notes), using both the **point** readout (argmax-style
 conditional mean) and one **sampled** draw per note. All logic lives in the tested
-`drumhumanizer/analysis.py`; figures are produced by `scripts/analyze_model.py`.
+`ml/src/drum_dynamics/research/analysis.py`; figures are produced by `scripts/analyze_model.py`.
 
 ## I1 — What the embeddings encode
 
