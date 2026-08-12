@@ -6,7 +6,7 @@ train-split scan can be trusted. Run with:  .venv/bin/python -m pytest tests/ -v
 
 import numpy as np
 
-from drumhumanizer.phase0 import (
+from drum_dynamics.phase0 import (
     GAP_EDGES,
     GAP_MS_EDGES,
     N_MIDI,

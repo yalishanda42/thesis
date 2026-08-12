@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from drumhumanizer.metrics import evaluate, mae, rmse
+from drum_dynamics.metrics import evaluate, mae, rmse
 
 
 def test_mae_rmse():

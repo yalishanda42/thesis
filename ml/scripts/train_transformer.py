@@ -8,21 +8,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import time
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt   # noqa: E402
-import numpy as np                # noqa: E402
-import pandas as pd               # noqa: E402
-import torch                      # noqa: E402
-from torch.utils.data import DataLoader, TensorDataset   # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils.data import DataLoader, TensorDataset
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from drumhumanizer.metrics import evaluate                                       # noqa: E402
-from drumhumanizer.model import VelocityTransformer                              # noqa: E402
-from drumhumanizer.seqdata import (                                              # noqa: E402
+from drum_dynamics.metrics import evaluate
+from drum_dynamics.model import VelocityTransformer
+from drum_dynamics.seqdata import (
     build_genre_vocab, bpm_stats, build_split_tensors, scatter_predictions,
 )
 

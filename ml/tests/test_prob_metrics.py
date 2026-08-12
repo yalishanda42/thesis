@@ -1,6 +1,6 @@
 import numpy as np
 
-from drumhumanizer.metrics import wasserstein1d, hist_intersection
+from drum_dynamics.metrics import wasserstein1d, hist_intersection
 
 
 def test_wasserstein_zero_for_identical():

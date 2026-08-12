@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from drumhumanizer.seqdata import (
+from drum_dynamics.seqdata import (
     NUMERIC_FEATURES,
     MAX_LEN,
     build_genre_vocab,
@@ -35,7 +35,7 @@ def test_bpm_stats_floors_std():
 
 import torch
 
-from drumhumanizer.seqdata import build_split_tensors, scatter_predictions
+from drum_dynamics.seqdata import build_split_tensors, scatter_predictions
 
 
 def _toy_df():

@@ -6,7 +6,7 @@ unseen player, this re-partitions the already-featurized rows so that the
 held-out drummers form the test split and never appear in train/val.
 
 Torch-free (pandas only) — safe to import without triggering the lazy torch
-imports in ``drumhumanizer/__init__``.
+imports in ``drum_dynamics/__init__``.
 """
 from __future__ import annotations
 

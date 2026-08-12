@@ -10,12 +10,10 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
 
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from drumhumanizer.holdout import build_drummer_holdout   # noqa: E402
+from drum_dynamics.holdout import build_drummer_holdout
 
 PROC = os.path.join("data", "processed")
 

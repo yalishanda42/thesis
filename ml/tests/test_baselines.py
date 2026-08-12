@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from drumhumanizer.baselines import GlobalMeanBaseline, LookupTableBaseline
+from drum_dynamics.baselines import GlobalMeanBaseline, LookupTableBaseline
 
 
 def _df():

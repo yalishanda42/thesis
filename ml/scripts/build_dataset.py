@@ -6,16 +6,14 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
 import time
 import warnings
 from multiprocessing import Pool
 
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from drumhumanizer.features import build_note_features   # noqa: E402
-from drumhumanizer.midi import load_note_array           # noqa: E402
+from drum_dynamics.features import build_note_features
+from drum_dynamics.midi import load_note_array
 
 EGMD_BASE = os.path.join("data", "e-gmd", "e-gmd-v1.0.0")
 EGMD_CSV = os.path.join(EGMD_BASE, "e-gmd-v1.0.0.csv")

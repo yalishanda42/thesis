@@ -30,13 +30,10 @@ import pandas as pd
 import matplotlib
 
 matplotlib.use("Agg")  # headless
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
-# make the package importable when run as a script from the repo root
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from drumhumanizer.midi import drum_name  # noqa: E402
-from drumhumanizer.phase0 import (  # noqa: E402
+from drum_dynamics.midi import drum_name
+from drum_dynamics.phase0 import (
     GAP_EDGES,
     GAP_MS_EDGES,
     FileScan,

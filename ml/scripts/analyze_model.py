@@ -19,17 +19,16 @@ import sys
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt   # noqa: E402
-import numpy as np                # noqa: E402
-import pandas as pd               # noqa: E402
-import torch                      # noqa: E402
-from torch.utils.data import DataLoader, TensorDataset   # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils.data import DataLoader, TensorDataset
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from drumhumanizer import analysis, heads                                          # noqa: E402
-from drumhumanizer.model import VelocityTransformer                                # noqa: E402
-from drumhumanizer.seqdata import build_split_tensors, scatter_predictions         # noqa: E402
-from drumhumanizer.voicemap import CANONICAL_VOICES                                # noqa: E402
+from drum_dynamics import analysis, heads
+from drum_dynamics.model import VelocityTransformer
+from drum_dynamics.seqdata import build_split_tensors, scatter_predictions
+from drum_dynamics.voicemap import CANONICAL_VOICES
 
 PROC = os.path.join("data", "processed")
 OUT = os.path.join("docs", "plan_e")

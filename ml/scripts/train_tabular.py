@@ -6,19 +6,17 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 
-import joblib                     # noqa: E402
+import joblib
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt   # noqa: E402
-import numpy as np                # noqa: E402
-import pandas as pd               # noqa: E402
-import lightgbm as lgb            # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import lightgbm as lgb
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from drumhumanizer.baselines import GlobalMeanBaseline, LookupTableBaseline  # noqa: E402
-from drumhumanizer.metrics import evaluate                                    # noqa: E402
+from drum_dynamics.baselines import GlobalMeanBaseline, LookupTableBaseline
+from drum_dynamics.metrics import evaluate
 
 PROC = os.path.join("data", "processed")
 OUT = os.path.join("docs", "plan_a")

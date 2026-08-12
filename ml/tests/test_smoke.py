@@ -1,4 +1,4 @@
-"""Smoke tests for the drumhumanizer package.
+"""Smoke tests for the drum_dynamics package.
 
 These run against a real E-GMD file (the first one in the metadata CSV) to
 verify the extracted helpers behave the same as the original inline notebook
@@ -14,7 +14,7 @@ matplotlib.use("Agg")  # headless: never open a window during tests
 import numpy as np
 import pandas as pd
 
-from drumhumanizer import (
+from drum_dynamics import (
     Idx,
     MidiNote,
     DRUM_MIDI_NAME,
@@ -25,7 +25,7 @@ from drumhumanizer import (
     play_midi_notes,
     get_soundfont,
 )
-from drumhumanizer.viz import _build_roll
+from drum_dynamics.viz import _build_roll
 
 EGMD_BASE = os.path.join("data", "e-gmd", "e-gmd-v1.0.0")
 EGMD_CSV = os.path.join(EGMD_BASE, "e-gmd-v1.0.0.csv")
@@ -50,7 +50,7 @@ def test_drum_map_known_pieces():
 
 
 def test_drum_name_covers_egmd_extras():
-    from drumhumanizer import drum_name
+    from drum_dynamics import drum_name
 
     # General MIDI pitch resolves via the GM map
     assert drum_name(36) == "Bass Drum 1"
