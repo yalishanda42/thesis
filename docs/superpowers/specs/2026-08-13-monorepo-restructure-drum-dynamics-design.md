@@ -193,9 +193,69 @@ via a lazy `__getattr__`. Preserved as follows:
 - **README.md** — rewritten for the monorepo + "Dynamics Needed" brand + new
   setup (`pip install -e ml/`, per-component layout, verification commands with
   `ml/tests/`).
-- **.gitignore** — add `web/node_modules`, `web/dist`, `plugin/build`,
-  `plugin/cmake-build-*`. Existing python/data/sf/mac rules unchanged
-  (`.venv`, `data`, `**/sf/big`, etc. still apply at root).
+- **.gitignore** — expanded to cover all three toolchains' build/package
+  artifacts, since scripts run from the repo root and artifacts can land at or
+  near root. Existing rules (`.venv`, `venv`, `data`, `input`, `**/sf/big`,
+  `__pycache__/`, `*.py[cod]`, `.ipynb_checkpoints/`, `.python-version`,
+  `.deepeval`, `**/.DS_Store`) stay; add the following, grouped by section:
+
+  ```gitignore
+  # Python — packaging & tooling caches
+  build/
+  dist/
+  *.egg-info/
+  .eggs/
+  *.egg
+  .pytest_cache/
+  .mypy_cache/
+  .ruff_cache/
+  .coverage
+  htmlcov/
+  .tox/
+
+  # C++ / CMake (plugin/)
+  plugin/build/
+  plugin/cmake-build-*/
+  CMakeCache.txt
+  CMakeFiles/
+  compile_commands.json
+  *.o
+  *.obj
+  *.a
+  *.so
+  *.dylib
+  *.dll
+
+  # Node / React (web/)
+  node_modules/
+  web/dist/
+  web/build/
+  .vite/
+  .next/
+  npm-debug.log*
+  yarn-debug.log*
+  yarn-error.log*
+  pnpm-debug.log*
+  .pnpm-store/
+
+  # Env / secrets
+  .env
+  .env.*
+  !.env.example
+  ```
+
+  Notes: `*.so`/`*.dylib` are ignored repo-wide (compiled plugin/native
+  artifacts); this does not affect the FluidSynth *system* library, which lives
+  in Homebrew, not the repo. `.env.*` is broad with a `!.env.example`
+  negation so a committed template survives. `build/`/`dist/` at root cover the
+  Python editable-install / sdist output.
+
+  Interaction with tracked `.gitkeep` placeholders: `manuscript/build/` already
+  contains a **tracked** `.gitkeep` (keeps the dir present for tectonic output).
+  The repo-wide `build/` rule ignores future compiled output there but does
+  **not** untrack the existing `.gitkeep` (git never auto-untracks). The
+  `plugin/` and `web/` homes use the same "tracked `.gitkeep` + ignored build
+  output" pattern. Implementation must **not** delete these `.gitkeep` files.
 - **manuscript** — update the single `\texttt{drumhumanizer}` →
   `\texttt{drum\_dynamics}` in `manuscript/chapters/06-realizatsiya.tex`.
   **No other manuscript prose is touched.**
