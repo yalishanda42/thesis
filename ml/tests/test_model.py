@@ -1,7 +1,7 @@
 import torch
 
-from drum_dynamics.model import VelocityTransformer
-from drum_dynamics.seqdata import NUMERIC_FEATURES
+from drum_dynamics.models.model import VelocityTransformer
+from drum_dynamics.data.seqdata import NUMERIC_FEATURES
 
 
 def _tiny_model():
@@ -44,8 +44,8 @@ def test_padding_invariance():
 import os
 import tempfile
 
-from drum_dynamics.heads import head_output_dim, N_BINS, MDN_K
-from drum_dynamics.model import warm_start_backbone
+from drum_dynamics.models.heads import head_output_dim, N_BINS, MDN_K
+from drum_dynamics.models.model import warm_start_backbone
 
 
 def _mk(head):

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from .voicemap import CANONICAL_VOICES
+from ..core.voicemap import CANONICAL_VOICES
 
 _VOICE_IDX = {v: i for i, v in enumerate(CANONICAL_VOICES)}
 

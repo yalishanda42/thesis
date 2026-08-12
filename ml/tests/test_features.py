@@ -1,6 +1,6 @@
 import numpy as np
 
-from drum_dynamics.features import (
+from drum_dynamics.data.features import (
     SIMULTANEITY_TOL_BEATS,
     beats_per_bar,
     metrical_phase,
@@ -45,9 +45,9 @@ import os
 
 import pandas as pd
 
-from drum_dynamics.features import build_note_features
-from drum_dynamics.midi import load_note_array
-from drum_dynamics.voicemap import CANONICAL_VOICES
+from drum_dynamics.data.features import build_note_features
+from drum_dynamics.core.midi import load_note_array
+from drum_dynamics.core.voicemap import CANONICAL_VOICES
 
 EGMD_BASE = os.path.join("data", "e-gmd", "e-gmd-v1.0.0")
 

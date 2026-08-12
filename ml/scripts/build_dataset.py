@@ -12,8 +12,8 @@ from multiprocessing import Pool
 
 import pandas as pd
 
-from drum_dynamics.features import build_note_features
-from drum_dynamics.midi import load_note_array
+from drum_dynamics.data.features import build_note_features
+from drum_dynamics.core.midi import load_note_array
 
 EGMD_BASE = os.path.join("data", "e-gmd", "e-gmd-v1.0.0")
 EGMD_CSV = os.path.join(EGMD_BASE, "e-gmd-v1.0.0.csv")

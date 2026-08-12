@@ -15,7 +15,7 @@ tempo humanization. We focus on the Expanded Groove MIDI Dataset (E-GMD).
 
 import importlib
 
-from .midi import (
+from .core.midi import (
     Idx,
     MidiNote,
     DRUM_MIDI_NAME,
@@ -25,12 +25,12 @@ from .midi import (
     midi_number_to_tone,
     load_note_array,
 )
-from .voicemap import CANONICAL_VOICES, PITCH_TO_VOICE, voice_of, voice_index
-from .features import build_note_features
-from .baselines import GlobalMeanBaseline, LookupTableBaseline
-from .metrics import mae, rmse, evaluate, wasserstein1d, hist_intersection
-from .viz import piano_roll, drums_roll
-from .playback import play_midi_file, play_midi_notes, set_soundfont, get_soundfont
+from .core.voicemap import CANONICAL_VOICES, PITCH_TO_VOICE, voice_of, voice_index
+from .data.features import build_note_features
+from .models.baselines import GlobalMeanBaseline, LookupTableBaseline
+from .eval.metrics import mae, rmse, evaluate, wasserstein1d, hist_intersection
+from .viz.viz import piano_roll, drums_roll
+from .viz.playback import play_midi_file, play_midi_notes, set_soundfont, get_soundfont
 
 __all__ = [
     "Idx",
@@ -75,14 +75,14 @@ __all__ = [
 # path must stay torch-free. Accessing these names (or importing the
 # `.model`/`.seqdata` submodules directly) loads torch on demand.
 _LAZY = {
-    "NUMERIC_FEATURES": "seqdata",
-    "MAX_LEN": "seqdata",
-    "build_genre_vocab": "seqdata",
-    "bpm_stats": "seqdata",
-    "build_split_tensors": "seqdata",
-    "scatter_predictions": "seqdata",
-    "VelocityTransformer": "model",
-    "warm_start_backbone": "model",
+    "NUMERIC_FEATURES": "data.seqdata",
+    "MAX_LEN": "data.seqdata",
+    "build_genre_vocab": "data.seqdata",
+    "bpm_stats": "data.seqdata",
+    "build_split_tensors": "data.seqdata",
+    "scatter_predictions": "data.seqdata",
+    "VelocityTransformer": "models.model",
+    "warm_start_backbone": "models.model",
 }
 
 

@@ -32,8 +32,8 @@ import matplotlib
 matplotlib.use("Agg")  # headless
 import matplotlib.pyplot as plt
 
-from drum_dynamics.midi import drum_name
-from drum_dynamics.phase0 import (
+from drum_dynamics.core.midi import drum_name
+from drum_dynamics.research.phase0 import (
     GAP_EDGES,
     GAP_MS_EDGES,
     FileScan,

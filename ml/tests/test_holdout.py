@@ -1,6 +1,6 @@
 import pandas as pd
 
-from drum_dynamics.holdout import build_drummer_holdout
+from drum_dynamics.data.holdout import build_drummer_holdout
 
 
 def _toy():

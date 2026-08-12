@@ -3,7 +3,7 @@ import math
 import torch
 import torch.distributions as D
 
-from drum_dynamics import heads
+from drum_dynamics.models import heads
 
 
 def test_output_dims():

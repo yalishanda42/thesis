@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 
 from .heads import head_output_dim, init_mdn_head
-from .seqdata import NUMERIC_FEATURES
-from .voicemap import CANONICAL_VOICES
+from ..data.seqdata import NUMERIC_FEATURES
+from ..core.voicemap import CANONICAL_VOICES
 
 
 def _sinusoidal_pos_enc(max_len: int, d_model: int) -> torch.Tensor:

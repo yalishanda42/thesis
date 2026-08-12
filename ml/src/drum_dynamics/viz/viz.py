@@ -11,7 +11,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .midi import DRUM_MIDI_NAME, MidiNote, midi_number_to_tone
+from ..core.midi import DRUM_MIDI_NAME, MidiNote, midi_number_to_tone
 
 
 def _build_roll(notes):

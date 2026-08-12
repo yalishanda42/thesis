@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from drum_dynamics import analysis
+from drum_dynamics.research import analysis
 
 
 def test_add_metrical_cols_beat_and_backbeat():

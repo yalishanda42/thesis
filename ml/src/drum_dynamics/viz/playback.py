@@ -16,7 +16,7 @@ from ctypes.util import find_library
 
 import numpy as np
 
-from .midi import MidiNote, load_note_array
+from ..core.midi import MidiNote, load_note_array
 
 
 def _ensure_fluidsynth_discoverable() -> None:

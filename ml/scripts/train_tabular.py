@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 
-from drum_dynamics.baselines import GlobalMeanBaseline, LookupTableBaseline
-from drum_dynamics.metrics import evaluate
+from drum_dynamics.models.baselines import GlobalMeanBaseline, LookupTableBaseline
+from drum_dynamics.eval.metrics import evaluate
 
 PROC = os.path.join("data", "processed")
 OUT = os.path.join("docs", "plan_a")

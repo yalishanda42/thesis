@@ -64,7 +64,7 @@ def nearest_subdivision(phase_beat: np.ndarray) -> np.ndarray:
 
 import pandas as pd
 
-from .voicemap import CANONICAL_VOICES, voice_of
+from ..core.voicemap import CANONICAL_VOICES, voice_of
 
 
 def _log_clip_beats(delta_beats: np.ndarray) -> np.ndarray:

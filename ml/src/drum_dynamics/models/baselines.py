@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .features import N_PHASE_BINS
+from ..data.features import N_PHASE_BINS
 
 
 def _phase_bin(phase_beat: pd.Series) -> pd.Series:

@@ -50,16 +50,16 @@ REPLACEMENTS = {
         ")"
     ),
     "from enum import Enum": (
-        "# `Idx` and `MidiNote` are now imported from drum_dynamics.midi (see imports cell above).\n"
+        "# `Idx` and `MidiNote` are now imported from drum_dynamics.core.midi (see imports cell above).\n"
         "# They wrap a partitura note tuple:\n"
         "#   [0]=onset_secs [1]=duration_secs [2]=onset_ticks [3]=duration_ticks\n"
         "#   [4]=pitch [5]=velocity [6]=track [7]=channel [8]=id"
     ),
     "DRUM_MIDI_NAME = {": (
-        "# DRUM_MIDI_NAME (General MIDI percussion map) is imported from drum_dynamics.midi."
+        "# DRUM_MIDI_NAME (General MIDI percussion map) is imported from drum_dynamics.core.midi."
     ),
     "def drums_roll(notes):": (
-        "# drums_roll() / piano_roll() are imported from drum_dynamics.viz."
+        "# drums_roll() / piano_roll() are imported from drum_dynamics.viz.viz."
     ),
     "!brew install fluidsynth || apt-get install fluidsynth": (
         "# Playback needs the native FluidSynth library:\n"
@@ -79,7 +79,7 @@ REPLACEMENTS = {
         "set_soundfont(os.path.join('..', 'sf', 'big', 'FluidR3_GM.sf2'))"
     ),
     "import fluidsynth\nfrom IPython.display import Audio": (
-        "# play_midi_file() / play_midi_notes() are imported from drum_dynamics.playback.\n"
+        "# play_midi_file() / play_midi_notes() are imported from drum_dynamics.viz.playback.\n"
         "# NOTE: for drum tracks pass is_drums=True so playback routes to the GM percussion set."
     ),
     "play_midi_notes(example_notes)": (

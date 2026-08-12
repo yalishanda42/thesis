@@ -25,7 +25,7 @@ from drum_dynamics import (
     play_midi_notes,
     get_soundfont,
 )
-from drum_dynamics.viz import _build_roll
+from drum_dynamics.viz.viz import _build_roll
 
 EGMD_BASE = os.path.join("data", "e-gmd", "e-gmd-v1.0.0")
 EGMD_CSV = os.path.join(EGMD_BASE, "e-gmd-v1.0.0.csv")

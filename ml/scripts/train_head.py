@@ -19,10 +19,10 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from drum_dynamics import heads
-from drum_dynamics.metrics import evaluate, wasserstein1d, hist_intersection
-from drum_dynamics.model import VelocityTransformer, warm_start_backbone
-from drum_dynamics.seqdata import (
+from drum_dynamics.models import heads
+from drum_dynamics.eval.metrics import evaluate, wasserstein1d, hist_intersection
+from drum_dynamics.models.model import VelocityTransformer, warm_start_backbone
+from drum_dynamics.data.seqdata import (
     build_genre_vocab, bpm_stats, build_split_tensors, scatter_predictions,
 )
 

@@ -1,4 +1,4 @@
-from drum_dynamics.voicemap import CANONICAL_VOICES, voice_of, voice_index
+from drum_dynamics.core.voicemap import CANONICAL_VOICES, voice_of, voice_index
 
 
 def test_canonical_voices_are_14_unique():

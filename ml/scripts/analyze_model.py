@@ -25,10 +25,11 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from drum_dynamics import analysis, heads
-from drum_dynamics.model import VelocityTransformer
-from drum_dynamics.seqdata import build_split_tensors, scatter_predictions
-from drum_dynamics.voicemap import CANONICAL_VOICES
+from drum_dynamics.research import analysis
+from drum_dynamics.models import heads
+from drum_dynamics.models.model import VelocityTransformer
+from drum_dynamics.data.seqdata import build_split_tensors, scatter_predictions
+from drum_dynamics.core.voicemap import CANONICAL_VOICES
 
 PROC = os.path.join("data", "processed")
 OUT = os.path.join("docs", "plan_e")
