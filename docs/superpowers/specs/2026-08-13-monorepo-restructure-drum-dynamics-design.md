@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-13
 **Status:** approved (pending spec review)
-**Type:** refactor (pure move + rename + packaging; zero behavior change)
+**Type:** refactor (move + rename + packaging + additive HF-publishing plumbing;
+zero change to existing code behavior)
 
 ## Motivation
 
@@ -139,8 +140,9 @@ continue to be run from the repo root.
 - `[project]` name `drum_dynamics`, `requires-python >=3.12`.
 - `[project.dependencies]`: partitura, music21, numpy, pandas,
   scikit-learn>=1.6, lightgbm>=4.0, pyarrow>=15, torch, matplotlib,
-  pyfluidsynth. (Notebook tooling — jupyter/ipykernel/nbconvert — goes in an
-  optional `[project.optional-dependencies].notebooks` group.)
+  pyfluidsynth, huggingface_hub. (Notebook tooling —
+  jupyter/ipykernel/nbconvert — goes in an optional
+  `[project.optional-dependencies].notebooks` group.)
 - `[tool.setuptools.packages.find]` with `where = ["src"]`.
 
 ## Import-site migration (mechanical — all references)
@@ -204,6 +206,34 @@ via a lazy `__getattr__`. Preserved as follows:
 - **`ml/scripts/refactor_eda_notebook.py`** — regenerate the notebook cells it
   emits so they use `drum_dynamics` (flat import) and drop the
   `sys.path.insert(0, '..')` cell (editable install makes it unnecessary).
+
+## Model publishing to Hugging Face (structure only — no upload during refactor)
+
+HF Hub repos are **artifact publishing targets**, not source homes: a model repo
+(`git`+LFS on hf.co) holds only weights + config + a model card, and is
+populated by pushing files up (`hf upload`). It does **not** mirror this
+monorepo. Therefore the source stays a single monorepo (the thesis's single
+artifact); HF is just a distribution endpoint we push *to*. No splitting the
+source into multiple repos.
+
+Wire up the plumbing now so publishing isn't ad-hoc later:
+
+- **`ml/scripts/publish_model.py`** — thin wrapper over `hf upload` (via the
+  `huggingface_hub` Python API or shelling to the `hf` CLI). Reads a trained
+  artifact from the existing gitignored `data/processed/` location (no new
+  checkpoint convention introduced) and uploads it to a `model`-type repo, e.g.
+  `hf upload <namespace>/dynamics-needed <artifact> <path-in-repo> --type model`.
+  Repo id and artifact path are CLI args / env vars — no hardcoded namespace.
+  Adds `huggingface_hub` to `pyproject.toml` deps.
+- **`ml/model_card.md`** — model-card template with YAML front-matter
+  (license, `library_name`, `pipeline_tag`, `tags`, `datasets: [e-gmd]`,
+  metrics placeholders) + prose stub. Uploaded as the model repo's `README.md`.
+- **README** — short "Publishing models to Hugging Face" section documenting
+  `hf auth login`, `publish_model.py`, and `hf download` for the reverse path
+  (loading weights in code / the future plugin backend).
+
+Not done during this refactor: no actual `hf upload`, no HF repo creation, no
+auth. Just the script + template + docs, ready to run when a model is final.
 
 ## Out of scope (deferred to their own tasks)
 
