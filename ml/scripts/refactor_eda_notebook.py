@@ -20,7 +20,7 @@ def code(src: str):
 # (substring to find in a cell's joined source) -> new source string
 REPLACEMENTS = {
     "# uncomment this when running outside of Kaggle": (
-        "# The E-GMD dataset is expected under ../data/e-gmd (see repo README / requirements.txt).\n"
+        "# The E-GMD dataset is expected under ../../data/e-gmd (see repo README / ml/pyproject.toml).\n"
         "# To (re)download it locally, run from the repo root:\n"
         "#   mkdir -p data && curl -fL -o data/e-gmd-v1.0.0-midi.zip \\\n"
         "#     https://storage.googleapis.com/magentadata/datasets/e-gmd/v1.0.0/e-gmd-v1.0.0-midi.zip\n"
@@ -31,13 +31,11 @@ REPLACEMENTS = {
         "DATASET_METADATA_PATH = os.path.join(DATASET_BASE_PATH, 'e-gmd-v1.0.0.csv')"
     ),
     "!pip3 install music21 partitura scikit-learn torch matplotlib": (
-        "# Dependencies are managed via ../requirements.txt in a venv.\n"
+        "# Dependencies are managed via ../pyproject.toml in a venv.\n"
         "# On a fresh machine / Kaggle, uncomment:\n"
-        "# %pip install -r ../requirements.txt"
+        "# %pip install -e ..[notebooks]"
     ),
     "import pandas as pd\nimport partitura": (
-        "import sys\n"
-        "sys.path.insert(0, '..')  # make the drum_dynamics package importable from notebooks/\n\n"
         "import pandas as pd\n"
         "import partitura\n"
         "import matplotlib.pyplot as plt\n"
@@ -67,7 +65,7 @@ REPLACEMENTS = {
         "#   Debian: apt-get install fluidsynth"
     ),
     "!pip3 install pyfluidsynth": (
-        "# pyfluidsynth is installed via ../requirements.txt."
+        "# pyfluidsynth is installed via ../pyproject.toml."
     ),
     "!wget -nc -P sf/big/": (
         "# A General MIDI soundfont (with a drum kit) is expected at ../../sf/big/FluidR3_GM.sf2.\n"
@@ -76,7 +74,7 @@ REPLACEMENTS = {
         "#     'https://raw.githubusercontent.com/urish/cinto/master/media/FluidR3%20GM.sf2'"
     ),
     "SF_PATH = os.path.join('sf', 'big'": (
-        "set_soundfont(os.path.join('..', 'sf', 'big', 'FluidR3_GM.sf2'))"
+        "set_soundfont(os.path.join('..', '..', 'sf', 'big', 'FluidR3_GM.sf2'))"
     ),
     "import fluidsynth\nfrom IPython.display import Audio": (
         "# play_midi_file() / play_midi_notes() are imported from drum_dynamics.viz.playback.\n"

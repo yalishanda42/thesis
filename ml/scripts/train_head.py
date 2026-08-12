@@ -1,7 +1,7 @@
 """Train one probabilistic head on the Plan B backbone (warm-start, resumable)
 and evaluate: NLL, deterministic-readout metrics, and sampled-distribution match.
 
-Usage: .venv/bin/python scripts/train_head.py --head {gaussian,mdn,categorical}
+Usage: .venv/bin/python ml/scripts/train_head.py --head {gaussian,mdn,categorical}
        [--epochs N] [--run-epochs N] [--resume] [--eval-only] [--no-warm-start]
 """
 from __future__ import annotations

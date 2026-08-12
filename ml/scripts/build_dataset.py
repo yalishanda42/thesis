@@ -1,6 +1,6 @@
 """Build the Section A tabular dataset for every E-GMD split -> parquet.
 
-Usage: .venv/bin/python scripts/build_dataset.py [--limit N] [--workers K]
+Usage: .venv/bin/python ml/scripts/build_dataset.py [--limit N] [--workers K]
 """
 from __future__ import annotations
 

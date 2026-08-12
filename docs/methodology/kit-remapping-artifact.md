@@ -19,7 +19,7 @@ rest on a 43× redundant, voice-noisy dataset.
 Each performance was played back through the drum module under all 43 kit presets and the
 resulting MIDI re-captured; there is one `.midi` file per (performance × kit).
 
-`scripts/build_dataset.py` iterates every CSV row (all 45,537 MIDI files) and sets
+`ml/scripts/build_dataset.py` iterates every CSV row (all 45,537 MIDI files) and sets
 `file_id = meta["id"]` (`ml/src/drum_dynamics/data/features.py:122`). Since `id` is the performance id —
 shared by all 43 kit renderings — **each `file_id` aggregates 43 renderings of the same
 groove**.

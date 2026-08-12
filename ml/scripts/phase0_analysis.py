@@ -12,7 +12,7 @@ writes the artifacts that feed the final feature spec (design spec §3):
   docs/phase0/fig_gap_hist.png      inter-onset-gap histogram + valley
 
 Usage:
-    .venv/bin/python scripts/phase0_analysis.py [--limit N] [--workers K]
+    .venv/bin/python ml/scripts/phase0_analysis.py [--limit N] [--workers K]
 """
 
 from __future__ import annotations

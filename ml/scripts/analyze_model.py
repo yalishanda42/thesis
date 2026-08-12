@@ -8,7 +8,7 @@ Runs inference once on the in-distribution test split (point + one sampled draw
 per note), caches the merged predictions to parquet, then writes figures + a
 results summary. Re-run with --refresh to recompute predictions.
 
-Usage: .venv/bin/python scripts/analyze_model.py [--refresh]
+Usage: .venv/bin/python ml/scripts/analyze_model.py [--refresh]
 """
 from __future__ import annotations
 

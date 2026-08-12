@@ -25,7 +25,7 @@ data/  sf/     dataset + soundfonts (gitignored)
 ```bash
 # 1. Python environment + editable install of the ml package
 python -m venv .venv
-.venv/bin/pip install -e ml/                 # add [notebooks] for jupyter: -e ml/[notebooks]
+.venv/bin/pip install -e 'ml/'               # add [notebooks] for jupyter: -e 'ml/[notebooks]'
 
 # 2. Native FluidSynth library (for playback)
 brew install fluid-synth                      # macOS   (Debian: apt-get install fluidsynth)

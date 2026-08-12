@@ -105,6 +105,6 @@ The point estimator pulls soft notes up and loud notes down toward the condition
 ## Reproduce
 
 ```bash
-.venv/bin/python scripts/analyze_model.py            # uses cached preds if present
-.venv/bin/python scripts/analyze_model.py --refresh  # recompute predictions
+.venv/bin/python ml/scripts/analyze_model.py            # uses cached preds if present
+.venv/bin/python ml/scripts/analyze_model.py --refresh  # recompute predictions
 ```

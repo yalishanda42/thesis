@@ -1,7 +1,7 @@
 """Train the event-sequence Transformer on the Section B features and evaluate
 on the test split against Plan A's baselines.
 
-Usage: .venv/bin/python scripts/train_transformer.py [--epochs N] [--batch-size B]
+Usage: .venv/bin/python ml/scripts/train_transformer.py [--epochs N] [--batch-size B]
 """
 from __future__ import annotations
 

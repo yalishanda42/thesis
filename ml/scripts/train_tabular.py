@@ -1,6 +1,6 @@
 """Fit baselines + LightGBM on the Section A dataset and evaluate on the test split.
 
-Usage: .venv/bin/python scripts/train_tabular.py
+Usage: .venv/bin/python ml/scripts/train_tabular.py
 """
 from __future__ import annotations
 

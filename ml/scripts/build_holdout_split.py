@@ -4,7 +4,7 @@ featurized tabular parquets — no re-extraction, just re-partition by drummer.
 The held-out drummers become the test split; the rest are split into
 train/val by file (genre-stratified). Writes egmd_holdout_{split}.parquet.
 
-Usage: .venv/bin/python scripts/build_holdout_split.py [--holdout d3 d8] [--val-frac 0.1]
+Usage: .venv/bin/python ml/scripts/build_holdout_split.py [--holdout d3 d8] [--val-frac 0.1]
 """
 from __future__ import annotations
 

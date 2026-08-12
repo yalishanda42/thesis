@@ -1,12 +1,12 @@
 """drum_dynamics — utilities for the drum-velocity "humanization" thesis.
 
 This package extracts the helper code that was previously duplicated inline
-across the exploratory notebooks (``poc.ipynb`` and ``notebooks/eda.ipynb``):
+across the exploratory notebooks (``poc.ipynb`` and ``ml/notebooks/eda.ipynb``):
 
-* :mod:`drum_dynamics.midi`     — MIDI note access helpers (``MidiNote``, ``Idx``),
+* :mod:`drum_dynamics.core.midi`     — MIDI note access helpers (``MidiNote``, ``Idx``),
   the General MIDI percussion map, and loading helpers built on ``partitura``.
-* :mod:`drum_dynamics.viz`      — piano-roll / drum-roll visualization.
-* :mod:`drum_dynamics.playback` — in-notebook audio rendering via FluidSynth.
+* :mod:`drum_dynamics.viz.viz`       — piano-roll / drum-roll visualization.
+* :mod:`drum_dynamics.viz.playback`  — in-notebook audio rendering via FluidSynth.
 
 The goal of the wider project is to predict a "best-fitting" velocity for every
 note in a MIDI *drum* track — i.e. humanizing dynamics, analogous to existing

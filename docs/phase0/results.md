@@ -9,12 +9,12 @@ recommendations flagged **[decision]** for sign-off.
 ## How to reproduce
 
 ```bash
-.venv/bin/python scripts/phase0_analysis.py --workers 9      # ~40 s on 9 workers
-.venv/bin/python -m pytest tests/test_phase0.py -q           # pure-function unit tests
+.venv/bin/python ml/scripts/phase0_analysis.py --workers 9      # ~40 s on 9 workers
+.venv/bin/python -m pytest ml/tests/test_phase0.py -q           # pure-function unit tests
 ```
 
 Logic lives in `ml/src/drum_dynamics/research/phase0.py` (pure, unit-tested aggregation) driven by
-`scripts/phase0_analysis.py` (parallel scan → artifacts). All artifacts are in this folder:
+`ml/scripts/phase0_analysis.py` (parallel scan → artifacts). All artifacts are in this folder:
 `aggregates.npz` (raw mergeable counts), `pitch_velocity.csv`, `summary.json`, and four figures.
 
 ---

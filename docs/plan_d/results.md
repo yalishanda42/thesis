@@ -105,7 +105,7 @@ dynamic level.** Three ways to act on it, in increasing ambition:
 ## Reproduce
 
 ```bash
-.venv/bin/python scripts/build_holdout_split.py                       # drummer3+8 -> test
-.venv/bin/python scripts/train_transformer.py --tag holdout           # retrain backbone
-.venv/bin/python scripts/train_head.py --head categorical --tag holdout  # retrain head + eval
+.venv/bin/python ml/scripts/build_holdout_split.py                       # drummer3+8 -> test
+.venv/bin/python ml/scripts/train_transformer.py --tag holdout           # retrain backbone
+.venv/bin/python ml/scripts/train_head.py --head categorical --tag holdout  # retrain head + eval
 ```
