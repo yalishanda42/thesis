@@ -202,7 +202,7 @@ def loop():
             if style_disabled:
                 imgui.EndDisabled(ctx)
                 imgui.SameLine(ctx)
-                imgui.Text(ctx, "(genre only)")
+                imgui.Text(ctx, "(LGBM only)")
 
             # Model radio
             if imgui.RadioButton(ctx, "LGBM", p["model"] == "lgbm"):
