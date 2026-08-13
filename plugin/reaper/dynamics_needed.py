@@ -12,7 +12,10 @@ import urllib.request
 
 from reaper_python import *  # noqa: F401,F403  (provides RPR_* functions)
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+try:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+except NameError:                       # Reaper doesn't define __file__ for ReaScripts
+    _HERE = os.path.dirname(RPR_get_action_context()[1])
 sys.path.insert(0, _HERE)
 import dn_core  # noqa: E402
 
