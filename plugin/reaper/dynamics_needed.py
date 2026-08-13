@@ -60,7 +60,7 @@ def _init():
     import engine_client
     import dn_core
     health = engine_client.ensure_engine(cfg)
-    if health and health.get("styles"):
+    if health and not health.get("genres") and health.get("styles"):
         health["genres"] = dn_core.genres_from_styles(health["styles"])
     state = {
         "cfg": cfg,
