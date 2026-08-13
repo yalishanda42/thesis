@@ -190,11 +190,19 @@ def loop():
                 new_styles = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"])
                 p["style"] = new_styles[0] if new_styles else p["style"]
 
-            # Style combo (filtered by genre)
+            # Style combo (filtered by genre). MDN conditions on genre only, so
+            # disable Style under MDN to avoid implying it has an effect.
+            style_disabled = p["model"] == "mdn"
             si = styles_for_genre.index(p["style"]) if p["style"] in styles_for_genre else 0
+            if style_disabled:
+                imgui.BeginDisabled(ctx, True)
             changed, si = imgui.Combo(ctx, "Style", si, "\x00".join(styles_for_genre) + "\x00")
             if changed:
                 p["style"] = styles_for_genre[si]
+            if style_disabled:
+                imgui.EndDisabled(ctx)
+                imgui.SameLine(ctx)
+                imgui.Text(ctx, "(genre only)")
 
             # Model radio
             if imgui.RadioButton(ctx, "LGBM", p["model"] == "lgbm"):
@@ -203,17 +211,21 @@ def loop():
             if imgui.RadioButton(ctx, "MDN", p["model"] == "mdn"):
                 p["model"] = "mdn"
 
-            # Sliders
+            # Sliders. Temp only affects MDN sampling, so disable it under LGBM.
+            temp_disabled = p["model"] == "lgbm"
+            if temp_disabled:
+                imgui.BeginDisabled(ctx, True)
             changed, p["temperature"] = imgui.SliderDouble(ctx, "Temp", p["temperature"], 0.0, 2.0)
+            if temp_disabled:
+                imgui.EndDisabled(ctx)
+                imgui.SameLine(ctx)
+                imgui.Text(ctx, "(MDN only)")
             changed, p["blend"] = imgui.SliderDouble(ctx, "Blend", p["blend"], 0.0, 1.0)
 
             # Is a fill?
             changed, is_fill = imgui.Checkbox(ctx, "Is a fill?", p["beat_type"] == "fill")
             if changed:
                 p["beat_type"] = "fill" if is_fill else "beat"
-
-            # Live toggle
-            _, STATE["live"] = imgui.Checkbox(ctx, "Live", STATE["live"])
 
             take = _active_take()
             notes = _read_notes(take) if take else []
@@ -239,9 +251,13 @@ def loop():
             if res is not None:
                 STATE["preview"] = res[1]
 
-            # [Preview] button forces a fresh predict (also rerolls stochastic MDN)
-            if imgui.Button(ctx, "Preview"):
-                STATE["force_preview"] = True
+            # Live toggle + manual Preview on one row; Preview is hidden while
+            # Live is on (auto-predict makes it redundant).
+            _, STATE["live"] = imgui.Checkbox(ctx, "Live", STATE["live"])
+            if not STATE["live"]:
+                imgui.SameLine(ctx)
+                if imgui.Button(ctx, "Preview"):   # forces a fresh predict
+                    STATE["force_preview"] = True
 
             target_notes = [nt for nt in notes if nt["selected"]]
             imgui.Text(ctx, "velocities ({} target notes)".format(len(target_notes)))
