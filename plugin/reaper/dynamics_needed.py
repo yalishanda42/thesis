@@ -62,6 +62,18 @@ def _save_last(key, params):
     RPR_SetProjExtState(0, "DynamicsNeeded", key, json.dumps(params))
 
 
+def _apply(take, velocities):
+    # This binding always writes every field, so re-read each note and rewrite
+    # ONLY velocity (leave selection/mute/position/pitch untouched).
+    for idx, vel in velocities.items():
+        ok, _, _, sel, muted, startppq, endppq, chan, pitch, _ = RPR_MIDI_GetNote(
+            take, idx, 0, 0, 0.0, 0.0, 0, 0, 0)
+        if ok:
+            RPR_MIDI_SetNote(take, idx, sel, muted, startppq, endppq, chan, pitch,
+                             int(vel), True)   # noSort; one sort after the loop
+    RPR_MIDI_Sort(take)
+
+
 def _default_params(health, last):
     styles = health.get("styles", []) or ["rock"]
     genres = health.get("genres", []) or ["rock"]
@@ -214,9 +226,38 @@ def loop():
             RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - cur), bx + bw - 1, y + lane_h, cur_col)
             RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - pred), bx + bw - 1, y + lane_h, pred_col)
         RPR_ImGui_Dummy(ctx, w, lane_h)   # reserve layout space under the drawing
+
+        # Status line
+        if STATE["health"] is None:
+            RPR_ImGui_TextColored(ctx, 0xFF4040FF, "Engine unreachable")
+            RPR_ImGui_SameLine(ctx)
+            if RPR_ImGui_Button(ctx, "Retry"):
+                STATE["health"] = STATE["engine_client"].ensure_engine(STATE["cfg"])
+        elif STATE["worker"].last_error():
+            RPR_ImGui_TextColored(ctx, 0xFFAA40FF, "Predict failed: " + STATE["worker"].last_error())
+        elif not _active_take():
+            RPR_ImGui_TextColored(ctx, 0xAAAAAAFF, "Open a MIDI item to edit")
+        else:
+            RPR_ImGui_TextColored(ctx, 0x40FF40FF, "ready")
+
+        # Apply
+        can_apply = bool(_active_take()) and bool(STATE["preview"])
+        if not can_apply:
+            RPR_ImGui_BeginDisabled(ctx, True)
+        if RPR_ImGui_Button(ctx, "Apply") and can_apply:
+            take = _active_take()
+            RPR_Undo_BeginBlock()
+            _apply(take, STATE["preview"])
+            RPR_Undo_EndBlock("Dynamics Needed: restore velocities", -1)
+            _save_last(_track_key(take), STATE["params"])
+        if not can_apply:
+            RPR_ImGui_EndDisabled(ctx)
+
         RPR_ImGui_End(ctx)
-    if STATE["open"]:
-        RPR_defer("loop()")
+    if not STATE["open"]:
+        STATE["worker"].stop()
+        return
+    RPR_defer("loop()")
 
 
 def main():
