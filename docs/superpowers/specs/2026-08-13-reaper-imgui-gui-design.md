@@ -1,8 +1,47 @@
 # Dynamics Needed — ReaImGui GUI (design)
 
 **Date:** 2026-08-13
-**Status:** design, pending review
+**Status:** REVISED — pivoted to Lua (see "Pivot to Lua" below); the Python panel was implemented, failed at runtime, and is abandoned.
 **Supersedes:** the single-row `RPR_GetUserInputs` CSV dialog in `plugin/reaper/dynamics_needed.py`
+
+## Pivot to Lua (2026-08-13, post-implementation)
+
+The Python panel was built and passed all static review, but on the first real
+run in REAPER it failed with `name 'RPR_ImGui_CreateContext' is not defined`.
+
+**Root cause (verified on disk):** REAPER's shipped `reaper_python.py`
+(`~/Applications/REAPER.app/Contents/Plugins/`) is a *static* file that defines a
+`def RPR_<Name>` wrapper only for the *core* ReaScript API (each looks up a
+pointer in the `_ft` table and calls it via ctypes). It contains **no
+`RPR_ImGui_*` wrappers** and has **no `__getattr__`**, so `from reaper_python
+import *` can never expose ReaImGui's functions — installing ReaImGui does not
+help. The only Python route is hand-writing a ctypes `CFUNCTYPE` per ImGui call,
+which is impractical for a full GUI. This is the exact risk the walking-skeleton
+gate was meant to catch; the gate was skipped.
+
+**Decision:** rewrite the panel in **Lua**, where `reaper.ImGui_*` (or
+`require 'imgui'`) is the native, ergonomic, well-trodden path. Consequences that
+override the Python decisions below:
+
+- **No threads in Lua.** The background predict worker and the non-blocking
+  "starting" state are replaced by single-threaded, debounced, blocking calls on
+  the defer loop (accepted latency tradeoff).
+- **HTTP via `curl`** through `reaper.ExecProcess` (POST body via temp file);
+  **JSON via a bundled `json.lua`** (Lua has neither in stdlib).
+- **Engine autostart** via `reaper.ExecProcess` (detached spawn) + per-frame
+  short-timeout `curl` health polling while showing "Starting engine...".
+- `dn_core` logic is **ported to `dn_core.lua`** and self-tested with the local
+  `lua` interpreter (`~/homebrew/bin/lua`, 5.4). The Python modules
+  (`dynamics_needed.py`, `engine_client.py`, `predict_worker.py`, `dn_core.py`)
+  and their pytest files are **removed** — superseded, not used by the Lua panel.
+- The Python **inference engine** (`drum_dynamics.serve`) and `setup_reaper.py`
+  are unchanged.
+- ReaImGui must be installed via ReaPack (it currently is not).
+
+Everything below this section is the original Python design, retained for
+history; the ImGui *feature* behavior (controls, live preview, apply-with-undo,
+per-track persistence, status line) still holds — only the language/runtime
+changes.
 
 ## Goal
 
