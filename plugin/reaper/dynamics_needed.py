@@ -128,8 +128,14 @@ def _dialog(health, last):
     if not ok:
         return None
     genre, style, model, temp, blend, fill = (csv.split(",", 5) + [""] * 6)[:6]
+    try:
+        temperature = float(temp)
+        blend_val = float(blend)
+    except ValueError:
+        _msg("Dynamics Needed: temperature and blend must be numbers.")
+        return None
     return {"genre": genre.strip(), "style": style.strip(), "model": model.strip(),
-            "temperature": float(temp), "blend": float(blend),
+            "temperature": temperature, "blend": blend_val,
             "beat_type": "fill" if fill.strip().lower().startswith("y") else "beat"}
 
 
@@ -142,7 +148,12 @@ def _apply(take, notes, velocities):
 
 
 def main():
-    cfg = _load_config()
+    try:
+        cfg = _load_config()
+    except Exception:
+        _msg("Dynamics Needed: no config found. Run "
+             "'python plugin/reaper/setup_reaper.py' once, then retry.")
+        return
     take = _active_take()
     if not take:
         _msg("Dynamics Needed: open a MIDI item in the MIDI editor first.")
@@ -150,7 +161,8 @@ def main():
     health = _ensure_engine(cfg)
     if not health:
         _msg("Dynamics Needed: could not reach the inference engine. "
-             "Run plugin/reaper/setup_reaper.py once, then retry.")
+             "Run 'python plugin/reaper/setup_reaper.py' once, then retry. "
+             "If it persists, check plugin/reaper/.runtime/engine.log")
         return
 
     notes = _read_notes(take)

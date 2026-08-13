@@ -22,8 +22,8 @@ def build_predict_request(model, style, temperature, blend, beat_type, bpm, time
     return {
         "model": model,
         "style": style,
-        "temperature": float(temperature),
-        "blend": float(blend),
+        "temperature": max(0.0, float(temperature)),
+        "blend": min(1.0, max(0.0, float(blend))),
         "beat_type": beat_type,
         "bpm": float(bpm),
         "time_signature": time_signature,

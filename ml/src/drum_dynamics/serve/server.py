@@ -52,7 +52,10 @@ def _make_handler(engine, state):
             self.wfile.write(data)
 
         def do_GET(self):
-            status, body = route(engine, "GET", self.path, None)
+            try:
+                status, body = route(engine, "GET", self.path, None)
+            except Exception as e:  # noqa: BLE001
+                status, body = 500, {"error": str(e)}
             self._send(status, body)
 
         def do_POST(self):

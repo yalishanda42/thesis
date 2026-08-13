@@ -28,7 +28,6 @@ def test_mdn_predict_all_plumbing_with_fresh_model():
 
 def test_lgbm_predict_all_returns_row_aligned():
     df = _feature_df()
-    from drum_dynamics.serve.models import LgbmModel
     CAT = ["voice", "genre", "style", "time_signature", "beat_type", "nearest_subdiv"]
     DROP = ["file_id", "drummer", "split", "onset_sec", "bar_index", "velocity"]
     X = df.drop(columns=DROP)
@@ -42,6 +41,7 @@ def test_lgbm_predict_all_returns_row_aligned():
 
 
 def test_engine_routes_and_levels():
+    import pytest
     class Fake:
         def predict_all(self, df, **kw):
             return np.full(len(df), 111.0)
@@ -51,3 +51,9 @@ def test_engine_routes_and_levels():
            "notes": [{"index": 0, "pitch": 36, "onset_sec": 0.0, "velocity": 1, "selected": True}]}
     assert eng.predict(req) == {0: 111}
     assert eng.levels()["models"] == ["lgbm", "mdn"]
+    # mdn route (Fake.predict_all accepts temperature/seed kwargs)
+    req_mdn = {**req, "model": "mdn"}
+    assert eng.predict(req_mdn) == {0: 111}
+    # unknown model
+    with pytest.raises(ValueError):
+        eng.predict({**req, "model": "nope"})

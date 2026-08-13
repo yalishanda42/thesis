@@ -120,6 +120,12 @@ A Reaper Python ReaScript rewrites the velocities of selected MIDI drum notes in
 place, backed by a warm local inference service (`python -m drum_dynamics.serve`)
 that serves both the LightGBM and MDN models.
 
+**Prerequisites:** Before first use, the engine loads four artifacts from `data/processed/`:
+
+- `lightgbm_model.joblib` and `lightgbm_features.json` — produced by `ml/scripts/export_lightgbm.py`
+- `head_mdn.pt` — the trained MDN checkpoint
+- `mdn_meta.json` — produced by `ml/scripts/export_mdn.py`
+
 ```bash
 # 1. Export the MDN inference artifacts (vocab + bpm stats) once
 .venv/bin/python ml/scripts/export_mdn.py
@@ -133,6 +139,8 @@ then bind it. Select notes in the MIDI editor and run the action: the engine
 auto-starts on first use, a dialog collects genre/style/model/temperature/blend,
 and only the selected notes' velocities are updated (one undo step). The engine
 shuts down when Reaper closes.
+
+If the engine won't start, check `plugin/reaper/.runtime/engine.log`.
 
 ### Troubleshooting: OpenMP/libomp segfault
 

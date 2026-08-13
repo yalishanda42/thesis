@@ -31,3 +31,11 @@ def test_build_predict_request_shape():
 
 def test_parse_velocities():
     assert dn_core.parse_velocities({"velocities": {"0": 97, "3": 12}}) == {0: 97, 3: 12}
+
+
+def test_build_predict_request_clamps_blend_and_temperature():
+    req = dn_core.build_predict_request("mdn", "rock", -0.5, 2.0, "beat", 120.0, "4-4", [])
+    assert req["temperature"] == 0.0
+    assert req["blend"] == 1.0
+    req2 = dn_core.build_predict_request("mdn", "rock", 1.0, -1.0, "beat", 120.0, "4-4", [])
+    assert req2["blend"] == 0.0
