@@ -85,8 +85,19 @@ tags the repo `v<version>`, so `hf download <repo> --revision v0.1.0` works).
 
 The `metrics.json` files are produced by `ml/scripts/train_tabular.py` and
 `ml/scripts/train_head.py`. Load weights back with `hf download <namespace>/<repo>`
-(add `--revision v0.1.0` for a pinned version). E-GMD already exists on the Hub —
-link it, don't re-upload.
+(add `--revision v0.1.0` for a pinned version).
+
+### Datasets on the Hub
+
+E-GMD was not on the Hub, so this project publishes two dataset repos (both
+CC BY 4.0, cards under `ml/dataset_cards/`):
+
+- **[`yalishanda/e-gmd-v1.0.0-midi`](https://huggingface.co/datasets/yalishanda/e-gmd-v1.0.0-midi)**
+  — unofficial MIDI-only mirror of the Expanded Groove MIDI Dataset (original
+  `e-gmd-v1.0.0-midi.zip` + CSV + LICENSE), attributed to Callender/Hawthorne/Engel.
+- **[`yalishanda/dynamics-needed-egmd-tabular`](https://huggingface.co/datasets/yalishanda/dynamics-needed-egmd-tabular)**
+  — our derived per-note Section-A feature table (parquet, official splits),
+  loadable via `load_dataset(...)`.
 
 ### LightGBM native export (for C++ / the DAW plugin)
 
