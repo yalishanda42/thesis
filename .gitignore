@@ -59,3 +59,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# Dynamics Needed Reaper tool (machine-local)
+plugin/reaper/.runtime/
+plugin/reaper/config.local.json

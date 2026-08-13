@@ -109,3 +109,29 @@ def test_sample_is_in_range_and_reproducible():
         assert s1.shape == (50,)
         assert (s1 >= 0).all() and (s1 <= 127).all()
         assert torch.allclose(s1, s2)        # seeded -> reproducible
+
+
+def _mdn_raw(n=2000):
+    # deterministic raw params for MDN: [*, 3*K]
+    torch.manual_seed(0)
+    return torch.randn(n, 3 * heads.MDN_K)
+
+
+def test_sample_temperature_zero_returns_mixture_mean():
+    raw = _mdn_raw()
+    got = heads.sample("mdn", raw, temperature=0.0)
+    assert torch.allclose(got, heads.point("mdn", raw).clamp(0, 127))
+
+
+def test_sample_temperature_is_deterministic_with_seed():
+    raw = _mdn_raw()
+    a = heads.sample("mdn", raw, generator=torch.Generator().manual_seed(7), temperature=1.3)
+    b = heads.sample("mdn", raw, generator=torch.Generator().manual_seed(7), temperature=1.3)
+    assert torch.equal(a, b)
+
+
+def test_higher_temperature_widens_spread():
+    raw = _mdn_raw()
+    lo = heads.sample("mdn", raw, generator=torch.Generator().manual_seed(1), temperature=0.2)
+    hi = heads.sample("mdn", raw, generator=torch.Generator().manual_seed(1), temperature=2.5)
+    assert hi.std() > lo.std()

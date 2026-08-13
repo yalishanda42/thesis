@@ -141,19 +141,22 @@ def point(head_type, raw):
     raise ValueError(f"unknown head_type {head_type!r}")
 
 
-def sample(head_type, raw, generator=None):
+def sample(head_type, raw, generator=None, temperature=1.0):
     if head_type == "gaussian":
         mu, sigma = _gauss_params(raw)
         eps = torch.randn(mu.shape, generator=generator, device=mu.device)
-        y = mu + sigma * eps
+        y = mu + temperature * sigma * eps
     elif head_type == "mdn":
         log_pi, mu, sigma = _mdn_params(raw)
-        flat_pi = log_pi.exp().reshape(-1, MDN_K)
+        if temperature <= 0:
+            return (log_pi.exp() * mu).sum(-1).clamp(0, 127)   # mixture mean == point("mdn")
+        tempered = torch.log_softmax(log_pi / temperature, dim=-1)
+        flat_pi = tempered.exp().reshape(-1, MDN_K)
         k = torch.multinomial(flat_pi, 1, generator=generator).reshape(mu.shape[:-1])
         muk = mu.gather(-1, k.unsqueeze(-1)).squeeze(-1)
         sigk = sigma.gather(-1, k.unsqueeze(-1)).squeeze(-1)
         eps = torch.randn(muk.shape, generator=generator, device=muk.device)
-        y = muk + sigk * eps
+        y = muk + temperature * sigk * eps
     elif head_type == "categorical":
         p = torch.softmax(raw, dim=-1)
         b = torch.multinomial(p.reshape(-1, N_BINS), 1, generator=generator).reshape(p.shape[:-1])

@@ -13,7 +13,7 @@ ml/            Python: ML models + research + training (package: drum_dynamics)
   scripts/            training + dataset builders + publish_model.py
   notebooks/          EDA
   tests/
-plugin/        C++ DAW plugin "Dynamics Needed"  (not yet scaffolded)
+plugin/reaper/ Reaper ReaScript tool "Dynamics Needed" (in-place velocity restore)
 web/           React landing page                 (not yet scaffolded)
 manuscript/    LaTeX/PDF thesis
 docs/          research notes & results
@@ -113,3 +113,45 @@ text format for cross-language inference:
   the model splits on). Note: LightGBM is the *point* model (flattens dynamics), good
   for bootstrapping the plugin's inference/feature pipeline before adding the
   transformer.
+
+## Reaper velocity-restoration tool
+
+A Reaper Python ReaScript rewrites the velocities of selected MIDI drum notes in
+place, backed by a warm local inference service (`python -m drum_dynamics.serve`)
+that serves both the LightGBM and MDN models.
+
+**Prerequisites:** Before first use, the engine loads four artifacts from `data/processed/`:
+
+- `lightgbm_model.joblib` and `lightgbm_features.json` — produced by `ml/scripts/export_lightgbm.py`
+- `head_mdn.pt` — the trained MDN checkpoint
+- `mdn_meta.json` — produced by `ml/scripts/export_mdn.py`
+
+```bash
+# 1. Export the MDN inference artifacts (vocab + bpm stats) once
+.venv/bin/python ml/scripts/export_mdn.py
+
+# 2. One-time setup: writes config.local.json + prints Reaper registration steps
+.venv/bin/python plugin/reaper/setup_reaper.py
+```
+
+In Reaper: Actions → New action → Load ReaScript → `plugin/reaper/dynamics_needed.py`,
+then bind it. Select notes in the MIDI editor and run the action: the engine
+auto-starts on first use, a dialog collects genre/style/model/temperature/blend,
+and only the selected notes' velocities are updated (one undo step). The engine
+shuts down when Reaper closes.
+
+If the engine won't start, check `plugin/reaper/.runtime/engine.log`.
+
+### Troubleshooting: OpenMP/libomp segfault
+
+If the service or `pytest` crashes with a segmentation fault, PyTorch and
+LightGBM are loading two different OpenMP runtimes. Unify them by pointing
+torch's bundled libomp at the one LightGBM uses (Homebrew's):
+
+```bash
+cd "$(.venv/bin/python -c 'import os, torch; print(os.path.join(os.path.dirname(torch.__file__), "lib"))')"
+cp -n libomp.dylib libomp.dylib.orig      # backup
+ln -sf "$(brew --prefix libomp)/lib/libomp.dylib" libomp.dylib
+```
+
+A torch reinstall/upgrade reverts this — re-apply if the segfault returns.
