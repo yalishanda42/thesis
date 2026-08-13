@@ -32,6 +32,7 @@ def start_engine(cfg):
         cwd=cfg["repo_root"], stdout=log, stderr=log,
         stdin=subprocess.DEVNULL, start_new_session=True,
     )
+    log.close()
 
 
 def predict(cfg, request, timeout=60.0):

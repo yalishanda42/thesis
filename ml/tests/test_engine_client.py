@@ -62,6 +62,8 @@ def test_start_engine_spawns_expected_argv(monkeypatch, tmp_path):
     engine_client.start_engine(cfg)
     assert seen["argv"][:4] == ["/venv/py", "-m", "drum_dynamics.serve", "--port"]
     assert "8765" in seen["argv"]
+    assert "--parent-pid" in seen["argv"]
+    assert str(os.getpid()) in seen["argv"]
     assert seen["cwd"] == str(tmp_path)
 
 
