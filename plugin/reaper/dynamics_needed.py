@@ -12,20 +12,16 @@ import urllib.request
 
 from reaper_python import *  # noqa: F401,F403  (provides RPR_* functions)
 
-try:
-    _HERE = os.path.dirname(os.path.abspath(__file__))
-except NameError:                       # Reaper doesn't define __file__ for ReaScripts
-    _HERE = os.path.dirname(RPR_get_action_context()[1])
-sys.path.insert(0, _HERE)
-import dn_core  # noqa: E402
-
-
 def _msg(text):
     RPR_ShowConsoleMsg(text + "\n")
 
 
 def _load_config():
-    with open(os.path.join(_HERE, "config.local.json")) as fh:
+    # Reaper defines neither __file__ nor a Python get_action_context() here, so we
+    # locate our config via the Reaper resource path (setup_reaper.py writes it
+    # there). The config carries repo_root, from which we find dn_core + the engine.
+    cfg_path = os.path.join(RPR_GetResourcePath(), "dynamics_needed_config.json")
+    with open(cfg_path) as fh:
         return json.load(fh)
 
 
@@ -42,7 +38,7 @@ def _health(cfg):
 
 
 def _start_engine(cfg):
-    runtime = os.path.join(_HERE, ".runtime")
+    runtime = os.path.join(cfg["repo_root"], "plugin", "reaper", ".runtime")
     os.makedirs(runtime, exist_ok=True)
     log = open(os.path.join(runtime, "engine.log"), "a")
     subprocess.Popen(
@@ -89,19 +85,19 @@ def _read_notes(take):
 def _tempo_and_sig(take):
     item = RPR_GetMediaItemTake_Item(take)
     pos = RPR_GetMediaItemInfo_Value(item, "D_POSITION")
-    _, _, _, num, denom, bpm = RPR_TimeMap_GetTimeSigAtTime(0, pos, 0, 0, 0.0)
+    _, _, num, denom, bpm = RPR_TimeMap_GetTimeSigAtTime(0, pos, 0, 0, 0.0)
     return float(bpm), "{}-{}".format(int(num), int(denom))
 
 
 def _track_key(take):
     item = RPR_GetMediaItemTake_Item(take)
     track = RPR_GetMediaItem_Track(item)
-    _, _, guid = RPR_GetSetMediaTrackInfo_String(track, "GUID", "", False)
+    _, _, _, guid, _ = RPR_GetSetMediaTrackInfo_String(track, "GUID", "", False)
     return "dn_last_" + guid
 
 
 def _load_last(key):
-    _, _, val, _ = RPR_GetProjExtState(0, "DynamicsNeeded", key, "")
+    _, _, _, _, val, _ = RPR_GetProjExtState(0, "DynamicsNeeded", key, "", 4096)
     try:
         return json.loads(val) if val else {}
     except Exception:
@@ -157,6 +153,8 @@ def main():
         _msg("Dynamics Needed: no config found. Run "
              "'python plugin/reaper/setup_reaper.py' once, then retry.")
         return
+    sys.path.insert(0, os.path.join(cfg["repo_root"], "plugin", "reaper"))
+    import dn_core
     take = _active_take()
     if not take:
         _msg("Dynamics Needed: open a MIDI item in the MIDI editor first.")
