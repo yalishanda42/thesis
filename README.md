@@ -55,17 +55,33 @@ Run from the repo root:
 
 ## Publishing models to Hugging Face
 
-The source lives in this monorepo; trained weights are published to a separate
-HF **model** repo (git+LFS on the Hub) — HF holds artifacts, not the codebase.
+The source lives in this monorepo; trained weights are published to separate
+HF **model** repos (git+LFS on the Hub) — one repo per model, HF holds
+artifacts, not the codebase. `publish_model.py` uploads the artifact and a model
+card, auto-filling the card's `{{dotted.key}}` placeholders from a training
+`metrics.json` when `--metrics` is given.
 
 ```bash
 .venv/bin/hf auth login                       # once
+
+# LightGBM baseline -> its own repo, card auto-filled from metrics.json
 .venv/bin/python ml/scripts/publish_model.py \
-  --repo <namespace>/dynamics-needed \
+  --repo <namespace>/dynamics-needed-lgbm \
+  --artifact data/processed/lightgbm_model.joblib \
+  --path-in-repo model.joblib \
+  --card ml/model_cards/lightgbm.md \
+  --metrics <lgbm_out>/metrics.json
+
+# MDN transformer -> its own repo
+.venv/bin/python ml/scripts/publish_model.py \
+  --repo <namespace>/dynamics-needed-mdn \
   --artifact data/processed/transformer_best.pt \
-  --path-in-repo model.pt
+  --path-in-repo model.pt \
+  --card ml/model_cards/mdn.md \
+  --metrics <mdn_out>/metrics.json
 ```
 
-Load weights back in code / from the plugin backend with `hf download
-<namespace>/dynamics-needed`. E-GMD already exists on the Hub — link it, don't
-re-upload.
+The `metrics.json` files are produced by `ml/scripts/train_tabular.py` and
+`ml/scripts/train_head.py`. Load weights back in code / from the plugin backend
+with `hf download <namespace>/<repo>`. E-GMD already exists on the Hub — link it,
+don't re-upload.
