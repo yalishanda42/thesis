@@ -31,6 +31,13 @@ def test_render_card_leaves_unknown_placeholder_intact():
     assert unresolved == ["missing.key"]
 
 
+def test_render_card_substitutes_version_string():
+    render_card = _load_publish_module().render_card
+    rendered, unresolved = render_card("v {{version}}", {"version": "0.1.0"})
+    assert rendered == "v 0.1.0"
+    assert unresolved == []
+
+
 def test_help_runs():
     r = subprocess.run([sys.executable, str(SCRIPT), "--help"], capture_output=True, text=True)
     assert r.returncode == 0

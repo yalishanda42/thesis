@@ -59,29 +59,46 @@ The source lives in this monorepo; trained weights are published to separate
 HF **model** repos (git+LFS on the Hub) — one repo per model, HF holds
 artifacts, not the codebase. `publish_model.py` uploads the artifact and a model
 card, auto-filling the card's `{{dotted.key}}` placeholders from a training
-`metrics.json` when `--metrics` is given.
+`metrics.json` (`--metrics`) and the `{{version}}` from `--version` (which also
+tags the repo `v<version>`, so `hf download <repo> --revision v0.1.0` works).
 
 ```bash
-.venv/bin/hf auth login                       # once
+.venv/bin/hf auth login                       # once (run via `! hf auth login`)
 
-# LightGBM baseline -> its own repo, card auto-filled from metrics.json
+# LightGBM baseline -> its own repo, card auto-filled + versioned
 .venv/bin/python ml/scripts/publish_model.py \
   --repo <namespace>/dynamics-needed-lgbm \
-  --artifact data/processed/lightgbm_model.joblib \
-  --path-in-repo model.joblib \
-  --card ml/model_cards/lightgbm.md \
-  --metrics <lgbm_out>/metrics.json
+  --artifact data/processed/lightgbm_model.joblib --path-in-repo model.joblib \
+  --card ml/model_cards/lightgbm.md --metrics docs/plan_a/metrics.json --version 0.1.0
+# add the C++-native artifacts to the same repo (see below)
+.venv/bin/python ml/scripts/export_lightgbm.py
+.venv/bin/hf upload <namespace>/dynamics-needed-lgbm data/processed/lightgbm_model.txt    model.txt     --repo-type model
+.venv/bin/hf upload <namespace>/dynamics-needed-lgbm data/processed/lightgbm_features.json features.json --repo-type model
 
-# MDN transformer -> its own repo
+# MDN transformer -> its own repo (needs BOTH the backbone and the MDN head)
 .venv/bin/python ml/scripts/publish_model.py \
   --repo <namespace>/dynamics-needed-mdn \
-  --artifact data/processed/transformer_best.pt \
-  --path-in-repo model.pt \
-  --card ml/model_cards/mdn.md \
-  --metrics <mdn_out>/metrics.json
+  --artifact data/processed/head_mdn.pt --path-in-repo mdn_head.pt \
+  --card ml/model_cards/mdn.md --metrics docs/plan_c/mdn/metrics.json --version 0.1.0
+.venv/bin/hf upload <namespace>/dynamics-needed-mdn data/processed/transformer_best.pt backbone.pt --repo-type model
 ```
 
 The `metrics.json` files are produced by `ml/scripts/train_tabular.py` and
-`ml/scripts/train_head.py`. Load weights back in code / from the plugin backend
-with `hf download <namespace>/<repo>`. E-GMD already exists on the Hub — link it,
-don't re-upload.
+`ml/scripts/train_head.py`. Load weights back with `hf download <namespace>/<repo>`
+(add `--revision v0.1.0` for a pinned version). E-GMD already exists on the Hub —
+link it, don't re-upload.
+
+### LightGBM native export (for C++ / the DAW plugin)
+
+`ml/scripts/export_lightgbm.py` converts the joblib model to LightGBM's native
+text format for cross-language inference:
+
+- `lightgbm_model.txt` — load in C++ via `LGBM_BoosterCreateFromModelfile`, predict
+  with `LGBM_BoosterPredictForMat` (link `lib_lightgbm`). Verified to reproduce the
+  Python model's predictions exactly.
+- `lightgbm_features.json` — the exact feature order + each categorical feature's
+  ordered level list. Build the C++ feature vector in `feature_names` order and pass
+  each categorical as its **index** in `categorical_levels[col]` (the integer code
+  the model splits on). Note: LightGBM is the *point* model (flattens dynamics), good
+  for bootstrapping the plugin's inference/feature pipeline before adding the
+  transformer.

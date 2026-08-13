@@ -82,7 +82,7 @@ def render_card(template: str, metrics: dict) -> tuple[str, list[str]]:
 
 def publish(repo_id: str, artifact: str, path_in_repo: str, *,
             private: bool, upload_card: bool, card_path: str,
-            metrics_path: str | None) -> None:
+            metrics_path: str | None, version: str | None) -> None:
     api = HfApi(token=os.environ.get("HF_TOKEN"))
     api.create_repo(repo_id, repo_type=REPO_TYPE, private=private, exist_ok=True)
     api.upload_file(
@@ -93,9 +93,13 @@ def publish(repo_id: str, artifact: str, path_in_repo: str, *,
     )
     if upload_card:
         text = Path(card_path).read_text()
+        context: dict = {}
         if metrics_path:
-            metrics = json.loads(Path(metrics_path).read_text())
-            text, unresolved = render_card(text, metrics)
+            context.update(json.loads(Path(metrics_path).read_text()))
+        if version is not None:
+            context["version"] = version
+        if context:
+            text, unresolved = render_card(text, context)
             if unresolved:
                 print(f"warning: unresolved card placeholders: {sorted(set(unresolved))}")
         api.upload_file(
@@ -104,6 +108,9 @@ def publish(repo_id: str, artifact: str, path_in_repo: str, *,
             repo_id=repo_id,
             repo_type=REPO_TYPE,
         )
+    if version is not None:
+        # Mark this commit as a named revision, e.g. `hf download repo --revision v0.1.0`.
+        api.create_tag(repo_id, tag=f"v{version}", repo_type=REPO_TYPE, exist_ok=True)
 
 
 def main() -> None:
@@ -117,6 +124,8 @@ def main() -> None:
                    help="model-card template to upload as README (default: ml/model_card.md)")
     p.add_argument("--metrics", default=None,
                    help="metrics JSON whose values fill {{dotted.key}} placeholders in the card")
+    p.add_argument("--version", default=None,
+                   help="model version, e.g. 0.1.0; fills {{version}} in the card and tags the repo v<version>")
     p.add_argument("--private", action="store_true", help="create the repo as private")
     p.add_argument("--no-card", action="store_true",
                    help="skip uploading the model card as the repo README")
@@ -131,8 +140,9 @@ def main() -> None:
 
     publish(args.repo, args.artifact, args.path_in_repo,
             private=args.private, upload_card=not args.no_card,
-            card_path=args.card, metrics_path=args.metrics)
-    print(f"published {args.artifact} -> {args.repo}:{args.path_in_repo}")
+            card_path=args.card, metrics_path=args.metrics, version=args.version)
+    print(f"published {args.artifact} -> {args.repo}:{args.path_in_repo}"
+          + (f" (v{args.version})" if args.version else ""))
 
 
 if __name__ == "__main__":
