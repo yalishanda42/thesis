@@ -253,7 +253,7 @@ def loop():
 
             # Live toggle + manual Preview on one row; Preview is hidden while
             # Live is on (auto-predict makes it redundant).
-            _, STATE["live"] = imgui.Checkbox(ctx, "Live", STATE["live"])
+            _, STATE["live"] = imgui.Checkbox(ctx, "Live Preview", STATE["live"])
             if not STATE["live"]:
                 imgui.SameLine(ctx)
                 if imgui.Button(ctx, "Preview"):   # forces a fresh predict
