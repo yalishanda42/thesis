@@ -138,11 +138,15 @@ def _dialog(health, last):
             "beat_type": "fill" if fill.strip().lower().startswith("y") else "beat"}
 
 
-def _apply(take, notes, velocities):
-    for n in notes:
-        if n["index"] in velocities:
-            RPR_MIDI_SetNote(take, n["index"], -1, -1, -1, -1, -1, -1,
-                             velocities[n["index"]], False)
+def _apply(take, velocities):
+    # This Python binding can't pass "leave unchanged" (-1) -- it always writes the
+    # value -- so re-read each note's real fields and rewrite ONLY the velocity.
+    for idx, vel in velocities.items():
+        ok, _, _, sel, muted, startppq, endppq, chan, pitch, _ = RPR_MIDI_GetNote(
+            take, idx, 0, 0, 0.0, 0.0, 0, 0, 0)
+        if ok:
+            RPR_MIDI_SetNote(take, idx, sel, muted, startppq, endppq, chan, pitch,
+                             int(vel), True)   # noSort=True; one sort after the loop
     RPR_MIDI_Sort(take)
 
 
@@ -197,7 +201,7 @@ def main():
 
     velocities = dn_core.parse_velocities(response)
     RPR_Undo_BeginBlock()
-    _apply(take, notes, velocities)
+    _apply(take, velocities)
     RPR_Undo_EndBlock("Dynamics Needed: restore velocities", -1)
     _msg("Dynamics Needed: updated {} notes.".format(len(velocities)))
 
