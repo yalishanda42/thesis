@@ -1,4 +1,4 @@
-"""Dynamics Needed — Reaper action: restore velocities of the selected drum notes.
+"""Dynamics Needed - Reaper action: restore velocities of the selected drum notes.
 
 Runs under Reaper's embedded Python (stdlib only). Auto-starts the local inference
 service if it isn't already running, then rewrites the selected notes' velocities.
