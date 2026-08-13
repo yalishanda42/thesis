@@ -141,7 +141,7 @@ LightGBM are loading two different OpenMP runtimes. Unify them by pointing
 torch's bundled libomp at the one LightGBM uses (Homebrew's):
 
 ```bash
-cd .venv/lib/python3.12/site-packages/torch/lib
+cd "$(.venv/bin/python -c 'import os, torch; print(os.path.join(os.path.dirname(torch.__file__), "lib"))')"
 cp -n libomp.dylib libomp.dylib.orig      # backup
 ln -sf "$(brew --prefix libomp)/lib/libomp.dylib" libomp.dylib
 ```
