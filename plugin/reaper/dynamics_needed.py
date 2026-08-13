@@ -74,12 +74,15 @@ def _apply(take, velocities):
     RPR_MIDI_Sort(take)
 
 
-def _default_params(health, last):
+def _default_params(health, last, dn_core):
     styles = health.get("styles", []) or ["rock"]
     genres = health.get("genres", []) or ["rock"]
+    default_genre = last.get("genre", genres[0])
+    styles_for_default = dn_core.filter_styles_by_genre(styles, default_genre) or styles
+    default_style = last.get("style", styles_for_default[0] if styles_for_default else styles[0])
     return {
-        "genre": last.get("genre", genres[0]),
-        "style": last.get("style", styles[0]),
+        "genre": default_genre,
+        "style": default_style,
         "model": last.get("model", "mdn"),
         "temperature": float(last.get("temperature", 1.0)),
         "blend": float(last.get("blend", 0.8)),
@@ -87,51 +90,55 @@ def _default_params(health, last):
     }
 
 
+def _start_engine_async(state):
+    state["engine_ready"] = False
+    state["health"] = None
+    def worker():
+        h = state["engine_client"].ensure_engine(state["cfg"])
+        if h and not h.get("genres") and h.get("styles"):
+            h["genres"] = state["dn_core"].genres_from_styles(h["styles"])
+        with state["engine_lock"]:
+            state["health"] = h
+            state["engine_ready"] = True
+    import threading
+    threading.Thread(target=worker, daemon=True).start()
+
+
 def _init():
     cfg = _load_config()
     sys.path.insert(0, os.path.join(cfg["repo_root"], "plugin", "reaper"))
     import engine_client
     import dn_core
-    health = engine_client.ensure_engine(cfg)
-    if health and not health.get("genres") and health.get("styles"):
-        health["genres"] = dn_core.genres_from_styles(health["styles"])
+    import threading
     state = {
         "cfg": cfg,
         "engine_client": engine_client,
         "dn_core": dn_core,
         "ctx": RPR_ImGui_CreateContext("Dynamics Needed"),
-        "health": health,
+        "engine_lock": threading.Lock(),
+        "engine_ready": False,
+        "health": None,
         "open": True,
     }
+    _start_engine_async(state)
     take = None
     editor = RPR_MIDIEditor_GetActive()
     if editor:
         take = RPR_MIDIEditor_GetTake(editor)
-    last = _load_last(_track_key(take)) if take else {}
-    state["params"] = _default_params(state["health"] or {}, last)
+    state["last_params"] = _load_last(_track_key(take)) if take else {}
+    state["params"] = None
     state["live"] = True
-    state["dirty"] = False
     import predict_worker
     ec, cfgd = state["engine_client"], state["cfg"]
     state["worker"] = predict_worker.PredictWorker(
         lambda req: dn_core.parse_velocities(ec.predict(cfgd, req)))
     state["worker"].start()
     state["seq"] = 0
-    state["preview"] = {}          # index -> predicted velocity
-    state["notes"] = []            # last snapshot read on the main thread
+    state["preview"] = {}
     return state
 
 
 STATE = None
-
-
-def _active_take_note_count():
-    editor = RPR_MIDIEditor_GetActive()
-    take = RPR_MIDIEditor_GetTake(editor) if editor else None
-    if not take:
-        return None
-    _, _, note_count, _, _ = RPR_MIDI_CountEvts(take, 0, 0, 0)
-    return note_count
 
 
 def loop():
@@ -139,121 +146,128 @@ def loop():
     dn_core = STATE["dn_core"]
     visible, STATE["open"] = RPR_ImGui_Begin(ctx, "Dynamics Needed", True)
     if visible:
-        p = STATE["params"]
-        h = STATE["health"]
-        genres = h.get("genres", []) or ["rock"]
-        styles_for_genre = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"]) or [p["style"]]
+        with STATE["engine_lock"]:
+            engine_ready = STATE["engine_ready"]
+            h = STATE["health"]
 
-        # Genre combo
-        gi = genres.index(p["genre"]) if p["genre"] in genres else 0
-        changed, gi = RPR_ImGui_Combo(ctx, "Genre", gi, "\x00".join(genres) + "\x00", len(genres))
-        if changed:
-            p["genre"] = genres[gi]
-            new_styles = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"])
-            p["style"] = new_styles[0] if new_styles else p["style"]
-            STATE["dirty"] = True
-
-        # Style combo (filtered by genre)
-        si = styles_for_genre.index(p["style"]) if p["style"] in styles_for_genre else 0
-        changed, si = RPR_ImGui_Combo(ctx, "Style", si, "\x00".join(styles_for_genre) + "\x00", len(styles_for_genre))
-        if changed:
-            p["style"] = styles_for_genre[si]; STATE["dirty"] = True
-
-        # Model radio
-        if RPR_ImGui_RadioButton(ctx, "LGBM", p["model"] == "lgbm"):
-            p["model"] = "lgbm"; STATE["dirty"] = True
-        RPR_ImGui_SameLine(ctx)
-        if RPR_ImGui_RadioButton(ctx, "MDN", p["model"] == "mdn"):
-            p["model"] = "mdn"; STATE["dirty"] = True
-
-        # Sliders
-        changed, p["temperature"] = RPR_ImGui_SliderDouble(ctx, "Temp", p["temperature"], 0.0, 2.0)
-        if changed: STATE["dirty"] = True
-        changed, p["blend"] = RPR_ImGui_SliderDouble(ctx, "Blend", p["blend"], 0.0, 1.0)
-        if changed: STATE["dirty"] = True
-
-        # Is a fill?
-        changed, is_fill = RPR_ImGui_Checkbox(ctx, "Is a fill?", p["beat_type"] == "fill")
-        if changed:
-            p["beat_type"] = "fill" if is_fill else "beat"; STATE["dirty"] = True
-
-        # Live toggle
-        _, STATE["live"] = RPR_ImGui_Checkbox(ctx, "Live", STATE["live"])
-
-        take = _active_take()
-        notes = _read_notes(take) if take else []
-        STATE["notes"] = notes
-        targets = set(dn_core.resolve_target_indices(notes))
-        for nt in notes:
-            nt["selected"] = nt["index"] in targets
-
-        # Build a change signature so we only re-predict on real changes.
-        sig = (json.dumps(STATE["params"], sort_keys=True),
-               tuple((nt["index"], nt["pitch"], round(nt["onset_sec"], 4)) for nt in notes if nt["selected"]))
-        force = STATE.pop("force_preview", False)
-        if take and (force or (STATE["live"] and sig != STATE.get("last_sig"))):
-            STATE["last_sig"] = sig
-            bpm, time_sig = _tempo_and_sig(take)
-            req = dn_core.build_predict_request(
-                STATE["params"]["model"], STATE["params"]["style"],
-                STATE["params"]["temperature"], STATE["params"]["blend"],
-                STATE["params"]["beat_type"], bpm, time_sig, notes)
-            STATE["seq"] += 1
-            STATE["worker"].submit(STATE["seq"], req)
-
-        res = STATE["worker"].result()
-        if res is not None:
-            STATE["preview"] = res[1]
-
-        # [Preview] button forces a fresh predict (also rerolls stochastic MDN)
-        if RPR_ImGui_Button(ctx, "Preview"):
-            STATE["force_preview"] = True
-
-        target_notes = [nt for nt in notes if nt["selected"]]
-        RPR_ImGui_Text(ctx, "velocities ({} target notes)".format(len(target_notes)))
-        dl = RPR_ImGui_GetWindowDrawList(ctx)
-        x, y = RPR_ImGui_GetCursorScreenPos(ctx)
-        w = 260.0
-        lane_h = 60.0
-        n = max(1, len(target_notes))
-        bw = w / n
-        cur_col = 0x8080807F       # faint gray (RGBA)
-        pred_col = 0x33CCFFFF      # cyan
-        for i, nt in enumerate(target_notes):
-            bx = x + i * bw
-            cur = nt["velocity"] / 127.0
-            pred = STATE["preview"].get(nt["index"], nt["velocity"]) / 127.0
-            RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - cur), bx + bw - 1, y + lane_h, cur_col)
-            RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - pred), bx + bw - 1, y + lane_h, pred_col)
-        RPR_ImGui_Dummy(ctx, w, lane_h)   # reserve layout space under the drawing
-
-        # Status line
-        if STATE["health"] is None:
+        if not engine_ready:
+            RPR_ImGui_Text(ctx, "Starting engine...")
+            RPR_ImGui_End(ctx)
+        elif h is None:
             RPR_ImGui_TextColored(ctx, 0xFF4040FF, "Engine unreachable")
             RPR_ImGui_SameLine(ctx)
             if RPR_ImGui_Button(ctx, "Retry"):
-                STATE["health"] = STATE["engine_client"].ensure_engine(STATE["cfg"])
-        elif STATE["worker"].last_error():
-            RPR_ImGui_TextColored(ctx, 0xFFAA40FF, "Predict failed: " + STATE["worker"].last_error())
-        elif not _active_take():
-            RPR_ImGui_TextColored(ctx, 0xAAAAAAFF, "Open a MIDI item to edit")
+                _start_engine_async(STATE)
+            RPR_ImGui_End(ctx)
         else:
-            RPR_ImGui_TextColored(ctx, 0x40FF40FF, "ready")
+            if STATE["params"] is None:
+                STATE["params"] = _default_params(h, STATE["last_params"], dn_core)
 
-        # Apply
-        can_apply = bool(_active_take()) and bool(STATE["preview"])
-        if not can_apply:
-            RPR_ImGui_BeginDisabled(ctx, True)
-        if RPR_ImGui_Button(ctx, "Apply") and can_apply:
+            p = STATE["params"]
+            genres = h.get("genres", []) or ["rock"]
+            styles_for_genre = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"]) or [p["style"]]
+
+            # Genre combo
+            gi = genres.index(p["genre"]) if p["genre"] in genres else 0
+            changed, gi = RPR_ImGui_Combo(ctx, "Genre", gi, "\x00".join(genres) + "\x00", len(genres))
+            if changed:
+                p["genre"] = genres[gi]
+                new_styles = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"])
+                p["style"] = new_styles[0] if new_styles else p["style"]
+
+            # Style combo (filtered by genre)
+            si = styles_for_genre.index(p["style"]) if p["style"] in styles_for_genre else 0
+            changed, si = RPR_ImGui_Combo(ctx, "Style", si, "\x00".join(styles_for_genre) + "\x00", len(styles_for_genre))
+            if changed:
+                p["style"] = styles_for_genre[si]
+
+            # Model radio
+            if RPR_ImGui_RadioButton(ctx, "LGBM", p["model"] == "lgbm"):
+                p["model"] = "lgbm"
+            RPR_ImGui_SameLine(ctx)
+            if RPR_ImGui_RadioButton(ctx, "MDN", p["model"] == "mdn"):
+                p["model"] = "mdn"
+
+            # Sliders
+            changed, p["temperature"] = RPR_ImGui_SliderDouble(ctx, "Temp", p["temperature"], 0.0, 2.0)
+            changed, p["blend"] = RPR_ImGui_SliderDouble(ctx, "Blend", p["blend"], 0.0, 1.0)
+
+            # Is a fill?
+            changed, is_fill = RPR_ImGui_Checkbox(ctx, "Is a fill?", p["beat_type"] == "fill")
+            if changed:
+                p["beat_type"] = "fill" if is_fill else "beat"
+
+            # Live toggle
+            _, STATE["live"] = RPR_ImGui_Checkbox(ctx, "Live", STATE["live"])
+
             take = _active_take()
-            RPR_Undo_BeginBlock()
-            _apply(take, STATE["preview"])
-            RPR_Undo_EndBlock("Dynamics Needed: restore velocities", -1)
-            _save_last(_track_key(take), STATE["params"])
-        if not can_apply:
-            RPR_ImGui_EndDisabled(ctx)
+            notes = _read_notes(take) if take else []
+            targets = set(dn_core.resolve_target_indices(notes))
+            for nt in notes:
+                nt["selected"] = nt["index"] in targets
 
-        RPR_ImGui_End(ctx)
+            # Build a change signature so we only re-predict on real changes.
+            sig = (json.dumps(STATE["params"], sort_keys=True),
+                   tuple((nt["index"], nt["pitch"], round(nt["onset_sec"], 4)) for nt in notes if nt["selected"]))
+            force = STATE.pop("force_preview", False)
+            if take and (force or (STATE["live"] and sig != STATE.get("last_sig"))):
+                STATE["last_sig"] = sig
+                bpm, time_sig = _tempo_and_sig(take)
+                req = dn_core.build_predict_request(
+                    STATE["params"]["model"], STATE["params"]["style"],
+                    STATE["params"]["temperature"], STATE["params"]["blend"],
+                    STATE["params"]["beat_type"], bpm, time_sig, notes)
+                STATE["seq"] += 1
+                STATE["worker"].submit(STATE["seq"], req)
+
+            res = STATE["worker"].result()
+            if res is not None:
+                STATE["preview"] = res[1]
+
+            # [Preview] button forces a fresh predict (also rerolls stochastic MDN)
+            if RPR_ImGui_Button(ctx, "Preview"):
+                STATE["force_preview"] = True
+
+            target_notes = [nt for nt in notes if nt["selected"]]
+            RPR_ImGui_Text(ctx, "velocities ({} target notes)".format(len(target_notes)))
+            dl = RPR_ImGui_GetWindowDrawList(ctx)
+            x, y = RPR_ImGui_GetCursorScreenPos(ctx)
+            w = 260.0
+            lane_h = 60.0
+            n = max(1, len(target_notes))
+            bw = w / n
+            cur_col = 0x8080807F       # faint gray (RGBA)
+            pred_col = 0x33CCFFFF      # cyan
+            for i, nt in enumerate(target_notes):
+                bx = x + i * bw
+                cur = nt["velocity"] / 127.0
+                pred = STATE["preview"].get(nt["index"], nt["velocity"]) / 127.0
+                RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - cur), bx + bw - 1, y + lane_h, cur_col)
+                RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - pred), bx + bw - 1, y + lane_h, pred_col)
+            RPR_ImGui_Dummy(ctx, w, lane_h)   # reserve layout space under the drawing
+
+            # Status line
+            if STATE["worker"].last_error():
+                RPR_ImGui_TextColored(ctx, 0xFFAA40FF, "Predict failed: " + STATE["worker"].last_error())
+            elif not _active_take():
+                RPR_ImGui_TextColored(ctx, 0xAAAAAAFF, "Open a MIDI item to edit")
+            else:
+                RPR_ImGui_TextColored(ctx, 0x40FF40FF, "ready")
+
+            # Apply
+            can_apply = bool(_active_take()) and bool(STATE["preview"])
+            if not can_apply:
+                RPR_ImGui_BeginDisabled(ctx, True)
+            if RPR_ImGui_Button(ctx, "Apply") and can_apply:
+                take = _active_take()
+                RPR_Undo_BeginBlock()
+                _apply(take, STATE["preview"])
+                RPR_Undo_EndBlock("Dynamics Needed: restore velocities", -1)
+                _save_last(_track_key(take), STATE["params"])
+            if not can_apply:
+                RPR_ImGui_EndDisabled(ctx)
+
+            RPR_ImGui_End(ctx)
     if not STATE["open"]:
         STATE["worker"].stop()
         return

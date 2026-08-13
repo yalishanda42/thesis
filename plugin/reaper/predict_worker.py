@@ -62,8 +62,11 @@ class PredictWorker:
         self._thread.start()
 
     def stop(self):
+        if self._thread is None:
+            return
         self._stop.set()
         self._wake.set()
+        self._thread.join(timeout=1.0)
         self._thread = None
 
     def _run(self):
