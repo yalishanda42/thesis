@@ -22,6 +22,27 @@ def _active_take():
     return RPR_MIDIEditor_GetTake(editor) if editor else None
 
 
+def _read_notes(take):
+    _, _, note_count, _, _ = RPR_MIDI_CountEvts(take, 0, 0, 0)
+    notes = []
+    for i in range(note_count):
+        ok, _, _, sel, _, startppq, _, _, pitch, vel = RPR_MIDI_GetNote(
+            take, i, 0, 0, 0.0, 0.0, 0, 0, 0)
+        if not ok:
+            continue
+        onset = RPR_MIDI_GetProjTimeFromPPQPos(take, startppq)
+        notes.append({"index": i, "pitch": int(pitch), "onset_sec": float(onset),
+                      "velocity": int(vel), "selected": bool(sel)})
+    return notes
+
+
+def _tempo_and_sig(take):
+    item = RPR_GetMediaItemTake_Item(take)
+    pos = RPR_GetMediaItemInfo_Value(item, "D_POSITION")
+    _, _, num, denom, bpm = RPR_TimeMap_GetTimeSigAtTime(0, pos, 0, 0, 0.0)
+    return float(bpm), "{}-{}".format(int(num), int(denom))
+
+
 def _track_key(take):
     item = RPR_GetMediaItemTake_Item(take)
     track = RPR_GetMediaItem_Track(item)
@@ -78,6 +99,14 @@ def _init():
     state["params"] = _default_params(state["health"] or {}, last)
     state["live"] = True
     state["dirty"] = False
+    import predict_worker
+    ec, cfgd = state["engine_client"], state["cfg"]
+    state["worker"] = predict_worker.PredictWorker(
+        lambda req: dn_core.parse_velocities(ec.predict(cfgd, req)))
+    state["worker"].start()
+    state["seq"] = 0
+    state["preview"] = {}          # index -> predicted velocity
+    state["notes"] = []            # last snapshot read on the main thread
     return state
 
 
@@ -138,6 +167,53 @@ def loop():
 
         # Live toggle
         _, STATE["live"] = RPR_ImGui_Checkbox(ctx, "Live", STATE["live"])
+
+        take = _active_take()
+        notes = _read_notes(take) if take else []
+        STATE["notes"] = notes
+        targets = set(dn_core.resolve_target_indices(notes))
+        for nt in notes:
+            nt["selected"] = nt["index"] in targets
+
+        # Build a change signature so we only re-predict on real changes.
+        sig = (json.dumps(STATE["params"], sort_keys=True),
+               tuple((nt["index"], nt["pitch"], round(nt["onset_sec"], 4)) for nt in notes if nt["selected"]))
+        force = STATE.pop("force_preview", False)
+        if take and (force or (STATE["live"] and sig != STATE.get("last_sig"))):
+            STATE["last_sig"] = sig
+            bpm, time_sig = _tempo_and_sig(take)
+            req = dn_core.build_predict_request(
+                STATE["params"]["model"], STATE["params"]["style"],
+                STATE["params"]["temperature"], STATE["params"]["blend"],
+                STATE["params"]["beat_type"], bpm, time_sig, notes)
+            STATE["seq"] += 1
+            STATE["worker"].submit(STATE["seq"], req)
+
+        res = STATE["worker"].result()
+        if res is not None:
+            STATE["preview"] = res[1]
+
+        # [Preview] button forces a fresh predict (also rerolls stochastic MDN)
+        if RPR_ImGui_Button(ctx, "Preview"):
+            STATE["force_preview"] = True
+
+        target_notes = [nt for nt in notes if nt["selected"]]
+        RPR_ImGui_Text(ctx, "velocities ({} target notes)".format(len(target_notes)))
+        dl = RPR_ImGui_GetWindowDrawList(ctx)
+        x, y = RPR_ImGui_GetCursorScreenPos(ctx)
+        w = 260.0
+        lane_h = 60.0
+        n = max(1, len(target_notes))
+        bw = w / n
+        cur_col = 0x8080807F       # faint gray (RGBA)
+        pred_col = 0x33CCFFFF      # cyan
+        for i, nt in enumerate(target_notes):
+            bx = x + i * bw
+            cur = nt["velocity"] / 127.0
+            pred = STATE["preview"].get(nt["index"], nt["velocity"]) / 127.0
+            RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - cur), bx + bw - 1, y + lane_h, cur_col)
+            RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - pred), bx + bw - 1, y + lane_h, pred_col)
+        RPR_ImGui_Dummy(ctx, w, lane_h)   # reserve layout space under the drawing
         RPR_ImGui_End(ctx)
     if STATE["open"]:
         RPR_defer("loop()")
