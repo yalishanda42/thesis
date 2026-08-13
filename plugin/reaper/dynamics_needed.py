@@ -1,14 +1,29 @@
 # plugin/reaper/dynamics_needed.py
-"""Dynamics Needed - ReaImGui panel (walking skeleton).
+"""Dynamics Needed - ReaImGui panel (Python).
 
-ASCII only. No __file__. RPR_* return tuples. Runs under Reaper's embedded
-Python. Requires ReaImGui (install via ReaPack).
+Restores humanized velocities of drum notes with a live preview. Runs under
+Reaper's embedded Python. Requires ReaImGui (install via ReaPack) -- its API is
+reached through the official Python shim ``imgui.py`` (ReaImGui does NOT expose
+RPR_ImGui_* in reaper_python; the shim provides module-level imgui.* functions).
+
+ASCII only. No __file__. RPR_* (core API) return tuples; imgui.* out-params are
+returned as tuples too (e.g. Begin -> (visible, open), Combo -> (changed, idx)).
 """
 import json
 import os
 import sys
 
 from reaper_python import *  # noqa: F401,F403
+
+try:
+    sys.path.append(os.path.join(
+        RPR_GetResourcePath(), "Scripts", "ReaTeam Extensions", "API"))
+    import imgui  # ReaImGui official Python binding shim
+except Exception as e:
+    RPR_ShowConsoleMsg(
+        "Dynamics Needed: ReaImGui Python binding not found "
+        "(install ReaImGui via ReaPack): {}\n".format(e))
+    raise
 
 
 def _load_config():
@@ -114,7 +129,7 @@ def _init():
         "cfg": cfg,
         "engine_client": engine_client,
         "dn_core": dn_core,
-        "ctx": RPR_ImGui_CreateContext("Dynamics Needed"),
+        "ctx": imgui.CreateContext("Dynamics Needed"),
         "engine_lock": threading.Lock(),
         "engine_ready": False,
         "health": None,
@@ -144,21 +159,21 @@ STATE = None
 def loop():
     ctx = STATE["ctx"]
     dn_core = STATE["dn_core"]
-    visible, STATE["open"] = RPR_ImGui_Begin(ctx, "Dynamics Needed", True)
+    visible, STATE["open"] = imgui.Begin(ctx, "Dynamics Needed", True)
     if visible:
         with STATE["engine_lock"]:
             engine_ready = STATE["engine_ready"]
             h = STATE["health"]
 
         if not engine_ready:
-            RPR_ImGui_Text(ctx, "Starting engine...")
-            RPR_ImGui_End(ctx)
+            imgui.Text(ctx, "Starting engine...")
+            imgui.End(ctx)
         elif h is None:
-            RPR_ImGui_TextColored(ctx, 0xFF4040FF, "Engine unreachable")
-            RPR_ImGui_SameLine(ctx)
-            if RPR_ImGui_Button(ctx, "Retry"):
+            imgui.TextColored(ctx, 0xFF4040FF, "Engine unreachable")
+            imgui.SameLine(ctx)
+            if imgui.Button(ctx, "Retry"):
                 _start_engine_async(STATE)
-            RPR_ImGui_End(ctx)
+            imgui.End(ctx)
         else:
             if STATE["params"] is None:
                 STATE["params"] = _default_params(h, STATE["last_params"], dn_core)
@@ -169,7 +184,7 @@ def loop():
 
             # Genre combo
             gi = genres.index(p["genre"]) if p["genre"] in genres else 0
-            changed, gi = RPR_ImGui_Combo(ctx, "Genre", gi, "\x00".join(genres) + "\x00", len(genres))
+            changed, gi = imgui.Combo(ctx, "Genre", gi, "\x00".join(genres) + "\x00")
             if changed:
                 p["genre"] = genres[gi]
                 new_styles = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"])
@@ -177,28 +192,28 @@ def loop():
 
             # Style combo (filtered by genre)
             si = styles_for_genre.index(p["style"]) if p["style"] in styles_for_genre else 0
-            changed, si = RPR_ImGui_Combo(ctx, "Style", si, "\x00".join(styles_for_genre) + "\x00", len(styles_for_genre))
+            changed, si = imgui.Combo(ctx, "Style", si, "\x00".join(styles_for_genre) + "\x00")
             if changed:
                 p["style"] = styles_for_genre[si]
 
             # Model radio
-            if RPR_ImGui_RadioButton(ctx, "LGBM", p["model"] == "lgbm"):
+            if imgui.RadioButton(ctx, "LGBM", p["model"] == "lgbm"):
                 p["model"] = "lgbm"
-            RPR_ImGui_SameLine(ctx)
-            if RPR_ImGui_RadioButton(ctx, "MDN", p["model"] == "mdn"):
+            imgui.SameLine(ctx)
+            if imgui.RadioButton(ctx, "MDN", p["model"] == "mdn"):
                 p["model"] = "mdn"
 
             # Sliders
-            changed, p["temperature"] = RPR_ImGui_SliderDouble(ctx, "Temp", p["temperature"], 0.0, 2.0)
-            changed, p["blend"] = RPR_ImGui_SliderDouble(ctx, "Blend", p["blend"], 0.0, 1.0)
+            changed, p["temperature"] = imgui.SliderDouble(ctx, "Temp", p["temperature"], 0.0, 2.0)
+            changed, p["blend"] = imgui.SliderDouble(ctx, "Blend", p["blend"], 0.0, 1.0)
 
             # Is a fill?
-            changed, is_fill = RPR_ImGui_Checkbox(ctx, "Is a fill?", p["beat_type"] == "fill")
+            changed, is_fill = imgui.Checkbox(ctx, "Is a fill?", p["beat_type"] == "fill")
             if changed:
                 p["beat_type"] = "fill" if is_fill else "beat"
 
             # Live toggle
-            _, STATE["live"] = RPR_ImGui_Checkbox(ctx, "Live", STATE["live"])
+            _, STATE["live"] = imgui.Checkbox(ctx, "Live", STATE["live"])
 
             take = _active_take()
             notes = _read_notes(take) if take else []
@@ -225,13 +240,13 @@ def loop():
                 STATE["preview"] = res[1]
 
             # [Preview] button forces a fresh predict (also rerolls stochastic MDN)
-            if RPR_ImGui_Button(ctx, "Preview"):
+            if imgui.Button(ctx, "Preview"):
                 STATE["force_preview"] = True
 
             target_notes = [nt for nt in notes if nt["selected"]]
-            RPR_ImGui_Text(ctx, "velocities ({} target notes)".format(len(target_notes)))
-            dl = RPR_ImGui_GetWindowDrawList(ctx)
-            x, y = RPR_ImGui_GetCursorScreenPos(ctx)
+            imgui.Text(ctx, "velocities ({} target notes)".format(len(target_notes)))
+            dl = imgui.GetWindowDrawList(ctx)
+            x, y = imgui.GetCursorScreenPos(ctx)
             w = 260.0
             lane_h = 60.0
             n = max(1, len(target_notes))
@@ -242,32 +257,32 @@ def loop():
                 bx = x + i * bw
                 cur = nt["velocity"] / 127.0
                 pred = STATE["preview"].get(nt["index"], nt["velocity"]) / 127.0
-                RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - cur), bx + bw - 1, y + lane_h, cur_col)
-                RPR_ImGui_DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - pred), bx + bw - 1, y + lane_h, pred_col)
-            RPR_ImGui_Dummy(ctx, w, lane_h)   # reserve layout space under the drawing
+                imgui.DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - cur), bx + bw - 1, y + lane_h, cur_col)
+                imgui.DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - pred), bx + bw - 1, y + lane_h, pred_col)
+            imgui.Dummy(ctx, w, lane_h)   # reserve layout space under the drawing
 
             # Status line
             if STATE["worker"].last_error():
-                RPR_ImGui_TextColored(ctx, 0xFFAA40FF, "Predict failed: " + STATE["worker"].last_error())
+                imgui.TextColored(ctx, 0xFFAA40FF, "Predict failed: " + STATE["worker"].last_error())
             elif not _active_take():
-                RPR_ImGui_TextColored(ctx, 0xAAAAAAFF, "Open a MIDI item to edit")
+                imgui.TextColored(ctx, 0xAAAAAAFF, "Open a MIDI item to edit")
             else:
-                RPR_ImGui_TextColored(ctx, 0x40FF40FF, "ready")
+                imgui.TextColored(ctx, 0x40FF40FF, "ready")
 
             # Apply
             can_apply = bool(_active_take()) and bool(STATE["preview"])
             if not can_apply:
-                RPR_ImGui_BeginDisabled(ctx, True)
-            if RPR_ImGui_Button(ctx, "Apply") and can_apply:
+                imgui.BeginDisabled(ctx, True)
+            if imgui.Button(ctx, "Apply") and can_apply:
                 take = _active_take()
                 RPR_Undo_BeginBlock()
                 _apply(take, STATE["preview"])
                 RPR_Undo_EndBlock("Dynamics Needed: restore velocities", -1)
                 _save_last(_track_key(take), STATE["params"])
             if not can_apply:
-                RPR_ImGui_EndDisabled(ctx)
+                imgui.EndDisabled(ctx)
 
-            RPR_ImGui_End(ctx)
+            imgui.End(ctx)
     if not STATE["open"]:
         STATE["worker"].stop()
         return
