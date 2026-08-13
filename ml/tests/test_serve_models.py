@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 
-from drum_dynamics.serve.models import LgbmModel, MdnModel, Engine
+from drum_dynamics.serve.models import LgbmModel, MdnModel, TransformerModel, Engine
 from drum_dynamics.models.model import VelocityTransformer
 from drum_dynamics.data.features import build_note_features
 
@@ -26,6 +26,16 @@ def test_mdn_predict_all_plumbing_with_fresh_model():
     assert ((out >= 0) & (out <= 127)).all()
 
 
+def test_categorical_predict_all_plumbing_with_fresh_model():
+    df = _feature_df()
+    gv = {"funk": 1}
+    m = VelocityTransformer(n_genres=len(gv) + 1, head="categorical")
+    cat = TransformerModel(m, gv, bpm_mean=120.0, bpm_std=10.0, head_type="categorical")
+    out = cat.predict_all(df, seed=0)
+    assert out.shape == (len(df),)
+    assert ((out >= 0) & (out <= 127)).all()
+
+
 def test_lgbm_predict_all_returns_row_aligned():
     df = _feature_df()
     CAT = ["voice", "genre", "style", "time_signature", "beat_type", "nearest_subdiv"]
@@ -45,15 +55,16 @@ def test_engine_routes_and_levels():
     class Fake:
         def predict_all(self, df, **kw):
             return np.full(len(df), 111.0)
-    eng = Engine(Fake(), Fake(), styles=["funk"], genres=["funk"])
+    eng = Engine(Fake(), Fake(), Fake(), styles=["funk"], genres=["funk"])
     req = {"model": "lgbm", "style": "funk", "temperature": 1.0, "blend": 1.0,
            "beat_type": "beat", "bpm": 120, "time_signature": "4-4",
            "notes": [{"index": 0, "pitch": 36, "onset_sec": 0.0, "velocity": 1, "selected": True}]}
     assert eng.predict(req) == {0: 111}
-    assert eng.levels()["models"] == ["lgbm", "mdn"]
+    assert eng.levels()["models"] == ["lgbm", "mdn", "categorical"]
     # mdn route (Fake.predict_all accepts temperature/seed kwargs)
-    req_mdn = {**req, "model": "mdn"}
-    assert eng.predict(req_mdn) == {0: 111}
+    assert eng.predict({**req, "model": "mdn"}) == {0: 111}
+    # categorical route (Fake.predict_all accepts seed kwarg)
+    assert eng.predict({**req, "model": "categorical"}) == {0: 111}
     # unknown model
     with pytest.raises(ValueError):
         eng.predict({**req, "model": "nope"})

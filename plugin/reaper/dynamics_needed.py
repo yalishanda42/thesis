@@ -190,9 +190,9 @@ def loop():
                 new_styles = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"])
                 p["style"] = new_styles[0] if new_styles else p["style"]
 
-            # Style combo (filtered by genre). MDN conditions on genre only, so
-            # disable Style under MDN to avoid implying it has an effect.
-            style_disabled = p["model"] == "mdn"
+            # Style combo (filtered by genre). Only LGBM uses style; the
+            # transformer heads (MDN, Categorical) condition on genre only.
+            style_disabled = p["model"] != "lgbm"
             si = styles_for_genre.index(p["style"]) if p["style"] in styles_for_genre else 0
             if style_disabled:
                 imgui.BeginDisabled(ctx, True)
@@ -210,9 +210,13 @@ def loop():
             imgui.SameLine(ctx)
             if imgui.RadioButton(ctx, "MDN", p["model"] == "mdn"):
                 p["model"] = "mdn"
+            imgui.SameLine(ctx)
+            if imgui.RadioButton(ctx, "Categorical", p["model"] == "categorical"):
+                p["model"] = "categorical"
 
-            # Sliders. Temp only affects MDN sampling, so disable it under LGBM.
-            temp_disabled = p["model"] == "lgbm"
+            # Sliders. Temp only affects MDN sampling (LGBM is deterministic and
+            # Categorical sampling ignores temperature), so enable it only for MDN.
+            temp_disabled = p["model"] != "mdn"
             if temp_disabled:
                 imgui.BeginDisabled(ctx, True)
             changed, p["temperature"] = imgui.SliderDouble(ctx, "Temp", p["temperature"], 0.0, 2.0)
