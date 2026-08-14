@@ -34,7 +34,16 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - name: Install
-        run: python -m pip install -e "ml[packaging]"
+        shell: bash
+        run: |
+          # CPU-only torch on Linux/Windows: the default wheels bundle ~2 GB of
+          # CUDA libs the engine never uses (CPU single-request inference), which
+          # blows past GitHub's 2 GiB release-asset limit. macOS wheels are CPU
+          # already. Install torch first so the editable install below reuses it.
+          if [ "${{ runner.os }}" != "macOS" ]; then
+            python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          fi
+          python -m pip install -e "ml[packaging]"
       - name: Fetch weights
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}   # optional; only needed if the model repos are private
