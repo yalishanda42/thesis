@@ -22,16 +22,28 @@ def health(cfg, timeout=1.0):
         return None
 
 
+def _runtime_dir(cfg):
+    if cfg.get("engine_path"):
+        return os.path.join(os.path.dirname(cfg["engine_path"]), ".runtime")
+    return os.path.join(cfg["repo_root"], "plugin", "reaper", ".runtime")
+
+
 def start_engine(cfg):
-    runtime = os.path.join(cfg["repo_root"], "plugin", "reaper", ".runtime")
+    runtime = _runtime_dir(cfg)
     os.makedirs(runtime, exist_ok=True)
     log = open(os.path.join(runtime, "engine.log"), "a")
-    subprocess.Popen(
-        [cfg["venv_python"], "-m", "drum_dynamics.serve",
-         "--port", str(cfg.get("port", 8765)), "--parent-pid", str(os.getpid())],
-        cwd=cfg["repo_root"], stdout=log, stderr=log,
-        stdin=subprocess.DEVNULL, start_new_session=True,
-    )
+    port = str(cfg.get("port", 8765))
+    if cfg.get("engine_path"):
+        argv = [cfg["engine_path"], "--port", port, "--parent-pid", str(os.getpid())]
+        if cfg.get("proc_dir"):
+            argv += ["--proc-dir", cfg["proc_dir"]]
+        cwd = os.path.dirname(cfg["engine_path"])
+    else:
+        argv = [cfg["venv_python"], "-m", "drum_dynamics.serve",
+                "--port", port, "--parent-pid", str(os.getpid())]
+        cwd = cfg["repo_root"]
+    subprocess.Popen(argv, cwd=cwd, stdout=log, stderr=log,
+                     stdin=subprocess.DEVNULL, start_new_session=True)
     log.close()
 
 

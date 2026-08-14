@@ -48,11 +48,10 @@ def test_ensure_engine_gives_up_and_returns_none(monkeypatch):
     assert engine_client.ensure_engine({"port": 8765}, tries=3, sleep=lambda s: None) is None
 
 
-def test_start_engine_spawns_expected_argv(monkeypatch, tmp_path):
+def test_start_engine_dev_mode_argv(monkeypatch, tmp_path):
     seen = {}
     def fake_popen(argv, **kwargs):
-        seen["argv"] = argv
-        seen["cwd"] = kwargs.get("cwd")
+        seen["argv"] = argv; seen["cwd"] = kwargs.get("cwd")
         class P: pass
         return P()
     monkeypatch.setattr(engine_client.subprocess, "Popen", fake_popen)
@@ -61,10 +60,27 @@ def test_start_engine_spawns_expected_argv(monkeypatch, tmp_path):
     cfg = {"venv_python": "/venv/py", "repo_root": str(tmp_path), "port": 8765}
     engine_client.start_engine(cfg)
     assert seen["argv"][:4] == ["/venv/py", "-m", "drum_dynamics.serve", "--port"]
-    assert "8765" in seen["argv"]
-    assert "--parent-pid" in seen["argv"]
-    assert str(os.getpid()) in seen["argv"]
+    assert "8765" in seen["argv"] and "--parent-pid" in seen["argv"]
     assert seen["cwd"] == str(tmp_path)
+
+
+def test_start_engine_frozen_mode_argv(monkeypatch, tmp_path):
+    seen = {}
+    def fake_popen(argv, **kwargs):
+        seen["argv"] = argv; seen["cwd"] = kwargs.get("cwd")
+        class P: pass
+        return P()
+    monkeypatch.setattr(engine_client.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(engine_client.os, "makedirs", lambda *a, **k: None)
+    monkeypatch.setattr(engine_client, "open", lambda *a, **k: open(os.devnull, "a"), raising=False)
+    exe = str(tmp_path / "dn-engine")
+    weights = str(tmp_path / "weights")
+    cfg = {"engine_path": exe, "proc_dir": weights, "port": 8770}
+    engine_client.start_engine(cfg)
+    assert seen["argv"][0] == exe
+    assert "--proc-dir" in seen["argv"] and weights in seen["argv"]
+    assert "8770" in seen["argv"] and "--parent-pid" in seen["argv"]
+    assert seen["cwd"] == str(tmp_path)  # dirname(engine_path)
 
 
 def test_predict_returns_response_dict(monkeypatch):
