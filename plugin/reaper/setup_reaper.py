@@ -1,12 +1,14 @@
 #!/usr/bin/env python
-"""One-time setup for the Dynamics Needed Reaper tool.
+"""Development-mode config writer for the Dynamics Needed Reaper plugin.
 
-Writes the config the ReaScript needs (venv python + repo root + port) to the
-Reaper resource path as ``dynamics_needed_config.json`` -- the ReaScript reads it
-via ``RPR_GetResourcePath()`` because Reaper defines neither ``__file__`` nor a
-Python ``get_action_context()`` for it. Also writes a copy to
-``plugin/reaper/config.local.json`` for reference, and prints how to register the
-action in Reaper.
+Writes the **development** config (venv python + repo root + port) to the Reaper
+resource path as ``dynamics_needed_config.json``. This is used by developers running
+from the repo; end users never run this script. When installed via ReaPack, the
+ReaScript's first-run bootstrap automatically downloads the engine and writes the
+frozen config ({engine_path, proc_dir, engine_version, port}) instead.
+
+The ReaScript reads the config via ``RPR_GetResourcePath()`` because Reaper defines
+neither ``__file__`` nor a Python ``get_action_context()`` for it.
 
 Usage: .venv/bin/python plugin/reaper/setup_reaper.py [--port 8765]
                                                       [--reaper-resource-path DIR]

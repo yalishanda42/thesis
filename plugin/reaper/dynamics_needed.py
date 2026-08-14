@@ -26,10 +26,26 @@ except Exception as e:
     raise
 
 
-def _load_config():
-    cfg_path = os.path.join(RPR_GetResourcePath(), "dynamics_needed_config.json")
-    with open(cfg_path) as fh:
-        return json.load(fh)
+def _resource_path():
+    return RPR_GetResourcePath()
+
+
+def _module_dir(cfg, resource_path):
+    # Dev config points at the repo; installed build ships helpers beside the script.
+    if cfg and cfg.get("repo_root"):
+        return os.path.join(cfg["repo_root"], "plugin", "reaper")
+    return os.path.join(resource_path, "Scripts", "Dynamics Needed", "MIDI Editor")
+
+
+def _read_config_if_any(resource_path):
+    cfg_path = os.path.join(resource_path, "dynamics_needed_config.json")
+    if os.path.isfile(cfg_path):
+        try:
+            with open(cfg_path) as fh:
+                return json.load(fh)
+        except Exception:
+            return None
+    return None
 
 
 def _active_take():
@@ -120,11 +136,34 @@ def _start_engine_async(state):
 
 
 def _init():
-    cfg = _load_config()
-    sys.path.insert(0, os.path.join(cfg["repo_root"], "plugin", "reaper"))
+    resource_path = _resource_path()
+    cfg = _read_config_if_any(resource_path)
+
+    # Make helper modules importable (installed location, or the dev repo).
+    sys.path.insert(0, _module_dir(cfg, resource_path))
+    import dn_paths
+    import bootstrap
     import engine_client
     import dn_core
+    import predict_worker
     import threading
+
+    # First run (installed build, no config yet): download + install the engine.
+    if cfg is None or (not cfg.get("engine_path") and not cfg.get("repo_root")):
+        version = bootstrap.PINNED_ENGINE_VERSION
+        if not bootstrap.is_installed(resource_path, version):
+            ok = RPR_ShowMessageBox(
+                "Dynamics Needed needs to download its engine (~250 MB). Download now?",
+                "Dynamics Needed", 4)  # 4 = Yes/No; 6 = Yes
+            if ok != 6:
+                raise RuntimeError("engine download declined")
+            try:
+                cfg = bootstrap.install(resource_path, version, dn_paths.platform_key())
+            except bootstrap.BootstrapError as e:
+                raise RuntimeError("engine install failed: {}".format(e))
+        else:
+            cfg = bootstrap.write_config(resource_path, version)
+
     state = {
         "cfg": cfg,
         "engine_client": engine_client,
@@ -143,7 +182,6 @@ def _init():
     state["last_params"] = _load_last(_track_key(take)) if take else {}
     state["params"] = None
     state["live"] = True
-    import predict_worker
     ec, cfgd = state["engine_client"], state["cfg"]
     state["worker"] = predict_worker.PredictWorker(
         lambda req: dn_core.parse_velocities(ec.predict(cfgd, req)))
