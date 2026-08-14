@@ -23,11 +23,12 @@ const LANGS = [
   { code: 'bg', label: 'Български' },
 ]
 
-// Copy per language. `title` is an array of lines (each line is one visual row
-// of the big display title). `github` stays "GitHub" everywhere (proper noun).
+// Copy per language. `eyebrow` is the "midi drums · dynamics" tagline (uppercased
+// by CSS); `title` is an array of lines (each line is one visual row of the big
+// display title). `github` stays "GitHub" everywhere (proper noun).
 const T = {
   en: {
-    eyebrow: 'midi velocity · humanized',
+    eyebrow: 'midi drums · dynamics',
     title: ['Dynamics', 'Needed.'],
     subtitle: 'Humanize drum dynamics.',
     demo: 'Try the live demo',
@@ -35,7 +36,7 @@ const T = {
     models: 'Models',
   },
   'zh-CN': {
-    eyebrow: 'MIDI 力度 · 人性化',
+    eyebrow: 'MIDI 鼓 · 力度',
     title: ['需要力度。'],
     subtitle: '为鼓的力度注入人性。',
     demo: '试用在线演示',
@@ -43,7 +44,7 @@ const T = {
     models: '模型',
   },
   'zh-TW': {
-    eyebrow: 'MIDI 力度 · 人性化',
+    eyebrow: 'MIDI 鼓 · 力度',
     title: ['需要力度。'],
     subtitle: '為鼓的力度注入人性。',
     demo: '試用線上示範',
@@ -51,7 +52,7 @@ const T = {
     models: '模型',
   },
   ja: {
-    eyebrow: 'MIDIベロシティ · 人間らしく',
+    eyebrow: 'MIDIドラム · ダイナミクス',
     title: ['ダイナミクス', 'が必要。'],
     subtitle: 'ドラムに人間らしいダイナミクスを。',
     demo: 'デモを試す',
@@ -59,7 +60,7 @@ const T = {
     models: 'モデル',
   },
   ko: {
-    eyebrow: 'MIDI 벨로시티 · 휴머나이즈',
+    eyebrow: 'MIDI 드럼 · 다이내믹스',
     title: ['다이내믹스가', '필요해.'],
     subtitle: '드럼 다이내믹스를 인간답게.',
     demo: '라이브 데모 체험',
@@ -67,7 +68,7 @@ const T = {
     models: '모델',
   },
   it: {
-    eyebrow: 'velocity midi · umanizzata',
+    eyebrow: 'batteria midi · dinamica',
     title: ['Serve', 'Dinamica.'],
     subtitle: 'Umanizza la dinamica della batteria.',
     demo: 'Prova la demo live',
@@ -75,7 +76,7 @@ const T = {
     models: 'Modelli',
   },
   fr: {
-    eyebrow: 'vélocité midi · humanisée',
+    eyebrow: 'batterie midi · dynamique',
     title: ['Dynamique', 'Requise.'],
     subtitle: 'Humanisez la dynamique de la batterie.',
     demo: 'Essayer la démo',
@@ -83,7 +84,7 @@ const T = {
     models: 'Modèles',
   },
   es: {
-    eyebrow: 'velocidad midi · humanizada',
+    eyebrow: 'batería midi · dinámica',
     title: ['Dinámica', 'Necesaria.'],
     subtitle: 'Humaniza la dinámica de la batería.',
     demo: 'Prueba la demo',
@@ -91,7 +92,7 @@ const T = {
     models: 'Modelos',
   },
   de: {
-    eyebrow: 'midi-velocity · humanisiert',
+    eyebrow: 'midi-schlagzeug · dynamik',
     title: ['Dynamik', 'Gefragt.'],
     subtitle: 'Mach die Schlagzeugdynamik menschlich.',
     demo: 'Live-Demo testen',
@@ -99,7 +100,7 @@ const T = {
     models: 'Modelle',
   },
   ru: {
-    eyebrow: 'midi-динамика · очеловечена',
+    eyebrow: 'midi-барабаны · динамика',
     title: ['Нужна', 'Динамика.'],
     subtitle: 'Очеловечьте динамику барабанов.',
     demo: 'Попробовать демо',
@@ -107,7 +108,7 @@ const T = {
     models: 'Модели',
   },
   bg: {
-    eyebrow: 'midi динамика · подобрена',
+    eyebrow: 'midi барабани · динамика',
     title: ['Динамика', 'Трябва.'],
     subtitle: 'Подобри динамиката на барабаните.',
     demo: 'Пробвай демото',
