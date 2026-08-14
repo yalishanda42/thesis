@@ -100,23 +100,33 @@ def test_unify_libomp_symlinks_redundant_copies(tmp_path):
     internal = os.path.join(eng, "_internal")
     sk = os.path.join(internal, "sklearn", ".dylibs")
     tl = os.path.join(internal, "torch", "lib")
-    os.makedirs(sk); os.makedirs(tl)
+    lgbm_lib = os.path.join(internal, "lightgbm", "lib")
+    lgbm_dylibs = os.path.join(internal, "lightgbm", ".dylibs")
+    os.makedirs(sk); os.makedirs(tl); os.makedirs(lgbm_lib); os.makedirs(lgbm_dylibs)
     canonical = os.path.join(sk, "libomp.dylib")
     with open(canonical, "wb") as fh: fh.write(b"CANONICAL")
     root_copy = os.path.join(internal, "libomp.dylib")
     torch_copy = os.path.join(tl, "libomp.dylib")
+    lgbm_lib_copy = os.path.join(lgbm_lib, "libomp.dylib")
+    lgbm_dylibs_copy = os.path.join(lgbm_dylibs, "libomp.dylib")
     with open(root_copy, "wb") as fh: fh.write(b"dup1")
     with open(torch_copy, "wb") as fh: fh.write(b"dup2")
+    with open(lgbm_lib_copy, "wb") as fh: fh.write(b"dup3")
+    with open(lgbm_dylibs_copy, "wb") as fh: fh.write(b"dup4")
 
     bootstrap.unify_libomp(eng)
 
     assert os.path.islink(root_copy) and os.path.islink(torch_copy)
-    # both resolve to the single canonical file
+    assert os.path.islink(lgbm_lib_copy) and os.path.islink(lgbm_dylibs_copy)
+    # all resolve to the single canonical file
     assert os.path.realpath(root_copy) == os.path.realpath(canonical)
     assert os.path.realpath(torch_copy) == os.path.realpath(canonical)
+    assert os.path.realpath(lgbm_lib_copy) == os.path.realpath(canonical)
+    assert os.path.realpath(lgbm_dylibs_copy) == os.path.realpath(canonical)
     # idempotent second call
     bootstrap.unify_libomp(eng)
     assert os.path.islink(torch_copy)
+    assert os.path.islink(lgbm_dylibs_copy)
 
 
 def test_unify_libomp_noop_without_canonical(tmp_path):

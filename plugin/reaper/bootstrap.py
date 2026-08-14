@@ -34,6 +34,8 @@ def unify_libomp(engine_dir):
     redundant = [
         os.path.join(internal, "libomp.dylib"),
         os.path.join(internal, "torch", "lib", "libomp.dylib"),
+        os.path.join(internal, "lightgbm", "lib", "libomp.dylib"),
+        os.path.join(internal, "lightgbm", ".dylibs", "libomp.dylib"),
     ]
     for path in redundant:
         if not os.path.exists(path) and not os.path.islink(path):
@@ -91,7 +93,7 @@ class BootstrapError(Exception):
 
 
 def default_fetch(url):
-    with urllib.request.urlopen(url) as r:  # nosec - fixed release host / file://
+    with urllib.request.urlopen(url, timeout=60) as r:  # nosec - fixed release host / file://
         return r.read()
 
 

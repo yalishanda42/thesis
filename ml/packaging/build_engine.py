@@ -14,14 +14,14 @@ import subprocess
 import sys
 import zipfile
 
+from drum_dynamics.serve.download import REQUIRED_FILES as WEIGHT_FILES
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(REPO_ROOT, "plugin", "reaper"))
 import bootstrap  # noqa: E402
 
 DIST = os.path.join(HERE, "dist")
-WEIGHT_FILES = ["lightgbm_model.joblib", "lightgbm_features.json", "mdn_meta.json",
-                "head_mdn.pt", "transformer_meta.json", "head_categorical.pt"]
 
 
 def platform_key():

@@ -34,6 +34,8 @@ def _module_dir(cfg, resource_path):
     # Dev config points at the repo; installed build ships helpers beside the script.
     if cfg and cfg.get("repo_root"):
         return os.path.join(cfg["repo_root"], "plugin", "reaper")
+    # Hardcode path (must match dn_paths.script_dir); cannot import dn_paths here
+    # because sys.path.insert happens AFTER this runs (bootstrap ordering).
     return os.path.join(resource_path, "Scripts", "Dynamics Needed", "MIDI Editor")
 
 
@@ -148,21 +150,28 @@ def _init():
     import predict_worker
     import threading
 
-    # First run (installed build, no config yet): download + install the engine.
-    if cfg is None or (not cfg.get("engine_path") and not cfg.get("repo_root")):
+    # Engine bootstrap: download on first run, and re-download when the pinned
+    # engine version changes. Dev config (repo_root/venv_python) bypasses this.
+    is_dev = bool(cfg and cfg.get("repo_root"))
+    if not is_dev:
         version = bootstrap.PINNED_ENGINE_VERSION
-        if not bootstrap.is_installed(resource_path, version):
-            ok = RPR_ShowMessageBox(
-                "Dynamics Needed needs to download its engine (~250 MB). Download now?",
-                "Dynamics Needed", 4)  # 4 = Yes/No; 6 = Yes
-            if ok != 6:
-                raise RuntimeError("engine download declined")
-            try:
-                cfg = bootstrap.install(resource_path, version, dn_paths.platform_key())
-            except bootstrap.BootstrapError as e:
-                raise RuntimeError("engine install failed: {}".format(e))
-        else:
-            cfg = bootstrap.write_config(resource_path, version)
+        needs_engine = (cfg is None
+                        or cfg.get("engine_version") != version
+                        or not bootstrap.is_installed(resource_path, version))
+        if needs_engine:
+            if not bootstrap.is_installed(resource_path, version):
+                ok = RPR_ShowMessageBox(
+                    "Dynamics Needed needs to download its engine (~250 MB). Download now?",
+                    "Dynamics Needed", 4)  # 4 = Yes/No; 6 = Yes
+                if ok != 6:
+                    raise RuntimeError("engine download declined")
+                try:
+                    cfg = bootstrap.install(resource_path, version, dn_paths.platform_key())
+                except bootstrap.BootstrapError as e:
+                    raise RuntimeError("engine install failed: {}".format(e))
+            else:
+                # Already unpacked on disk (e.g. config missing/stale) -> (re)write config.
+                cfg = bootstrap.write_config(resource_path, version)
 
     state = {
         "cfg": cfg,
