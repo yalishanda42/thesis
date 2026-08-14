@@ -38,7 +38,7 @@ def main():
     try:
         base = "http://127.0.0.1:{}".format(port)
         health = None
-        for _ in range(60):
+        for _ in range(180):   # cold first launch of a downloaded bundle can be slow (Gatekeeper scan)
             time.sleep(1.0)
             try:
                 health = _get(base + "/health")

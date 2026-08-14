@@ -55,7 +55,11 @@ def predict(cfg, request, timeout=60.0):
         return json.loads(r.read())
 
 
-def ensure_engine(cfg, tries=30, delay=0.5, sleep=time.sleep):
+def ensure_engine(cfg, tries=360, delay=0.5, sleep=time.sleep):
+    # tries*delay = 180s: the FIRST launch of a freshly downloaded frozen bundle
+    # triggers a macOS Gatekeeper/XProtect scan of its many bundled dylibs, which
+    # can take well over a minute on a cold start (subsequent starts are ~2s).
+    # The panel shows "Starting engine..." while this poll runs on a worker thread.
     h = health(cfg)
     if h:
         return h
