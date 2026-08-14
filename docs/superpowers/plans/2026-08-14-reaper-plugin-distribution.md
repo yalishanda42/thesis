@@ -1205,7 +1205,7 @@ Note any issues (hidden-import gaps → fix in Task 5 spec; path issues → fix 
 - Consumes: `build_engine.py`, `smoke_test.py`, weights (fetched in CI), `make_index.py`.
 - Produces: on tag `engine-vX.Y.Z`, a GitHub Release with 4 platform zips + `SHA256SUMS`, and an updated `index.xml` on `gh-pages`.
 
-> **Weights in CI:** `data/processed/` is gitignored, so CI fetches the 6 weight files before freezing via `fetch_weights.py` (Step 2), which pulls each model's binary + metadata JSON from its HF repo (`yalishanda/dynamics-needed-{lgbm,mdn,categorical}`) and renames the binaries to what `Engine.load()` expects. Requires the one-time metadata upload (prerequisite below) and an `HF_TOKEN` secret if the repos are private.
+> **Weights in CI:** `data/processed/` is gitignored, so CI fetches the 6 weight files before freezing via `fetch_weights.py` (Step 2), which pulls each model's combined checkpoint + metadata JSON from its HF repo (`yalishanda/dynamics-needed-{lgbm,mdn,categorical}`) and renames the binaries to what `Engine.load()` expects. The required files are all present on HF (prerequisite done); add an `HF_TOKEN` secret if the repos are private.
 
 - [ ] **Step 1: Write the workflow**
 
@@ -1299,16 +1299,7 @@ jobs:
 
 > Each job's `SHA256SUMS` must aggregate **all four** zips (per the checksums job), because the bootstrap fetches one `SHA256SUMS` for all platforms. The per-platform `build_engine.py` `SHA256SUMS` is local-only; CI's `checksums` job produces the authoritative combined file.
 
-**Prerequisite (one-time, do before the first release):** the metadata JSONs are not on HF yet — `publish_model.py` only pushed the binaries. Upload each model's JSON into its existing repo (they keep their engine-expected names):
-
-```bash
-.venv/bin/python ml/scripts/publish_model.py --repo yalishanda/dynamics-needed-lgbm \
-    --artifact data/processed/lightgbm_features.json --path-in-repo lightgbm_features.json --no-card
-.venv/bin/python ml/scripts/publish_model.py --repo yalishanda/dynamics-needed-mdn \
-    --artifact data/processed/mdn_meta.json --path-in-repo mdn_meta.json --no-card
-.venv/bin/python ml/scripts/publish_model.py --repo yalishanda/dynamics-needed-categorical \
-    --artifact data/processed/transformer_meta.json --path-in-repo transformer_meta.json --no-card
-```
+**Prerequisite — DONE (2026-08-14):** the 3 metadata JSONs have been uploaded to their repos (`lightgbm_features.json`, `mdn_meta.json`, `transformer_meta.json`). The combined checkpoints (`mdn_head.pt`, `categorical_head.pt`) and `model.joblib` were already present and verified identical to local. No further HF uploads are needed for the first release.
 
 - [ ] **Step 2: Create the weights-fetch helper**
 
@@ -1316,13 +1307,16 @@ jobs:
 # ml/packaging/fetch_weights.py
 """Assemble the 6 engine weight files into --out (default data/processed).
 
-Each of the 3 HF model repos holds its binary plus its metadata JSON. The
-binaries are stored under generic names (model.joblib / model.pt) and are
-renamed here to the names Engine.load() expects; the JSONs already match.
+Each of the 3 HF model repos holds its combined checkpoint plus its metadata
+JSON. The binaries are stored under repo-specific names and are renamed here to
+the names Engine.load() expects; the JSONs already match. (Verified: the remote
+mdn_head.pt / categorical_head.pt are the full combined checkpoints, byte-for-
+byte identical to the local data/processed ones. The mdn repo also carries an
+extra backbone.pt copy that the engine does not use.)
 
-  yalishanda/dynamics-needed-lgbm        : model.joblib -> lightgbm_model.joblib ; lightgbm_features.json
-  yalishanda/dynamics-needed-mdn         : model.pt     -> head_mdn.pt           ; mdn_meta.json
-  yalishanda/dynamics-needed-categorical : model.pt     -> head_categorical.pt   ; transformer_meta.json
+  yalishanda/dynamics-needed-lgbm        : model.joblib      -> lightgbm_model.joblib ; lightgbm_features.json
+  yalishanda/dynamics-needed-mdn         : mdn_head.pt        -> head_mdn.pt           ; mdn_meta.json
+  yalishanda/dynamics-needed-categorical : categorical_head.pt -> head_categorical.pt ; transformer_meta.json
 
 Reads HF_TOKEN from the environment for private repos.
 """
@@ -1341,11 +1335,11 @@ REPOS = {
         ("lightgbm_features.json", "lightgbm_features.json"),
     ],
     "yalishanda/dynamics-needed-mdn": [
-        ("model.pt", "head_mdn.pt"),
+        ("mdn_head.pt", "head_mdn.pt"),
         ("mdn_meta.json", "mdn_meta.json"),
     ],
     "yalishanda/dynamics-needed-categorical": [
-        ("model.pt", "head_categorical.pt"),
+        ("categorical_head.pt", "head_categorical.pt"),
         ("transformer_meta.json", "transformer_meta.json"),
     ],
 }
@@ -1460,8 +1454,8 @@ git commit -m "docs: ReaPack install + dev/build instructions; ignore build outp
 - Excludes (partitura/music21/pyfluidsynth/matplotlib/pyarrow/jupyter) → Task 5 spec `EXCLUDES`. ✓
 - Weights set (6 files) → Task 5 `WEIGHT_FILES`, Task 10 `fetch_weights.FILES`, Task 6 usage. ✓
 
-**Placeholder scan:** All identity literals are resolved — GitHub `yalishanda42/dynamics-needed`, HF repos `yalishanda/dynamics-needed-{lgbm,mdn,categorical}`. No `TBD`/"handle edge cases"/uncoded steps remain. The one execution prerequisite is the one-time metadata-JSON upload to the 3 HF repos (Task 10, before the first release).
+**Placeholder scan:** All identity literals are resolved — GitHub `yalishanda42/dynamics-needed`, HF repos `yalishanda/dynamics-needed-{lgbm,mdn,categorical}`. No `TBD`/"handle edge cases"/uncoded steps remain. The metadata-JSON upload prerequisite is already done (2026-08-14); all weight files are present on HF.
 
 **Type consistency:** `platform_key()` values, `engine_exe`/`weights_dir`/`config_path` names, and the config keys `engine_path`/`proc_dir`/`engine_version`/`port` are used identically across dn_paths, bootstrap, engine_client, smoke_test, and the ReaScript. `asset_name`/`asset_url`/`sums_url`/`SHA256SUMS` names match between bootstrap, build_engine, and CI.
 
-**Open confirmations before execution:** all identities resolved. The only remaining coupling to keep in sync: the release tag `engine-v0.1.0` must match `PINNED_ENGINE_VERSION = "0.1.0"` (bump both together per release), and the one-time metadata-JSON upload to the 3 HF repos must happen before the first CI release.
+**Open confirmations before execution:** all identities resolved; all weight files present on HF (metadata upload done 2026-08-14). The only remaining coupling to keep in sync: the release tag `engine-v0.1.0` must match `PINNED_ENGINE_VERSION = "0.1.0"` (bump both together per release).
