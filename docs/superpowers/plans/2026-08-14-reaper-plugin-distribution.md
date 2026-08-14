@@ -20,7 +20,7 @@
 - **Freeze:** PyInstaller **one-folder**, name `dn-engine`, per platform `macos-arm64 | macos-x86_64 | windows-x64 | linux-x64`. Exclude `partitura`, `music21`, `pyfluidsynth`, `matplotlib`, `pyarrow`, `jupyter`, `ipykernel`, `nbconvert`.
 - **Distribution channel:** GitHub **Release** assets (≤2 GiB/file, uncapped total, no expiry). Never Actions artifacts for user downloads.
 - **macOS:** ad-hoc sign the freeze in CI (`codesign -s - --deep --force`); bootstrap downloads programmatically via `urllib` (no quarantine). Restore the exec bit after unzip on POSIX.
-- **Repo/release identity (fixed once, hard to rename later):** GitHub `OWNER/REPO`, ReaPack repo name `Dynamics Needed`, category `MIDI Editor`, engine release tag pattern `engine-vX.Y.Z`, engine zip name `dn-engine-<version>-<platform_key>.zip`. **Confirm `OWNER/REPO` before Task 3** (used as a literal). This plan uses the placeholder `OWNER/REPO` — replace globally at Task 3.
+- **Repo/release identity (fixed once, hard to rename later):** GitHub `yalishanda42/dynamics-needed`, GitHub Pages `yalishanda42.github.io/dynamics-needed`, HF model repos `yalishanda/dynamics-needed-{lgbm,mdn,categorical}`, ReaPack repo name `Dynamics Needed`, category `MIDI Editor`, engine release tag pattern `engine-vX.Y.Z`, engine zip name `dn-engine-<version>-<platform_key>.zip`.
 - **Run tests from repo root:** `.venv/bin/python -m pytest ml/tests/ -v`.
 
 ---
@@ -308,13 +308,11 @@ git commit -m "feat(plugin): engine_client dual-mode start_engine (frozen vs dev
 **Interfaces:**
 - Consumes: `dn_paths` (Task 1).
 - Produces:
-  - `PINNED_ENGINE_VERSION` (str, e.g. `"0.1.0"`), `GITHUB_OWNER_REPO` (str literal `OWNER/REPO`)
+  - `PINNED_ENGINE_VERSION` (str, e.g. `"0.1.0"`), `GITHUB_OWNER_REPO` (str literal `yalishanda42/dynamics-needed`)
   - `release_base_url() -> str` (honors `DN_RELEASE_BASE_URL`)
   - `asset_name(version, platform_key) -> str` = `dn-engine-<version>-<platform_key>.zip`
   - `asset_url(base, version, platform_key) -> str`, `sums_url(base, version) -> str`
   - `sha256_of(path) -> str`, `expected_sum(sums_text, name) -> str | None`, `verify(path, sums_text, name) -> bool`
-
-> **Before starting:** replace the `OWNER/REPO` placeholder in this file with the real GitHub repo (see Global Constraints).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -375,7 +373,7 @@ import hashlib
 import os
 
 PINNED_ENGINE_VERSION = "0.1.0"
-GITHUB_OWNER_REPO = "OWNER/REPO"  # TODO replace with the real repo before use
+GITHUB_OWNER_REPO = "yalishanda42/dynamics-needed"
 
 
 def release_base_url():
@@ -1032,7 +1030,7 @@ git commit -m "feat(plugin): ReaScript self-location + first-run engine bootstra
 
 **Interfaces:**
 - Consumes: nothing (stdlib `xml.etree`).
-- Produces: `build_index(script_version, time_iso, raw_base_url) -> str` (the `index.xml` text) and a CLI writing it to `plugin/reaper/reapack/index.xml`. The index declares one package (`dynamics_needed.py`, type `script`) under category `MIDI Editor`, with `<source>` entries for the ReaScript + its helper `.py` files, and a `<metadata>` description. `raw_base_url` is where ReaPack fetches the raw files (e.g. `https://raw.githubusercontent.com/OWNER/REPO/main/plugin/reaper`).
+- Produces: `build_index(script_version, time_iso, raw_base_url) -> str` (the `index.xml` text) and a CLI writing it to `plugin/reaper/reapack/index.xml`. The index declares one package (`dynamics_needed.py`, type `script`) under category `MIDI Editor`, with `<source>` entries for the ReaScript + its helper `.py` files, and a `<metadata>` description. `raw_base_url` is where ReaPack fetches the raw files (e.g. `https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper`).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1046,7 +1044,7 @@ import make_index
 
 def test_index_has_package_and_sources():
     xml = make_index.build_index("0.1.0", "2026-08-14T00:00:00Z",
-                                 "https://raw.example/OWNER/REPO/main/plugin/reaper")
+                                 "https://raw.example/yalishanda42/dynamics-needed/main/plugin/reaper")
     root = ET.fromstring(xml)
     assert root.tag == "index"
     cat = root.find("category")
@@ -1077,7 +1075,7 @@ Expected: FAIL (`ModuleNotFoundError: No module named 'make_index'`).
 
 Run: python plugin/reaper/reapack/make_index.py --version 0.1.0 \
         --time 2026-08-14T00:00:00Z \
-        --raw-base https://raw.githubusercontent.com/OWNER/REPO/main/plugin/reaper
+        --raw-base https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper
 """
 from __future__ import annotations
 
@@ -1207,7 +1205,7 @@ Note any issues (hidden-import gaps → fix in Task 5 spec; path issues → fix 
 - Consumes: `build_engine.py`, `smoke_test.py`, weights (fetched in CI), `make_index.py`.
 - Produces: on tag `engine-vX.Y.Z`, a GitHub Release with 4 platform zips + `SHA256SUMS`, and an updated `index.xml` on `gh-pages`.
 
-> **Weights in CI:** `data/processed/` is gitignored, so CI must fetch the 6 weight files before freezing. Add a `fetch-weights` step that downloads them (from the project's Hugging Face model repo — see `ml/scripts/publish_model.py` for the repo id — via `huggingface_hub.hf_hub_download`, or from a secure release asset). Set `--weights-dir` to that download dir. Confirm the weights source before implementing this step.
+> **Weights in CI:** `data/processed/` is gitignored, so CI fetches the 6 weight files before freezing via `fetch_weights.py` (Step 2), which pulls each model's binary + metadata JSON from its HF repo (`yalishanda/dynamics-needed-{lgbm,mdn,categorical}`) and renames the binaries to what `Engine.load()` expects. Requires the one-time metadata upload (prerequisite below) and an `HF_TOKEN` secret if the repos are private.
 
 - [ ] **Step 1: Write the workflow**
 
@@ -1301,37 +1299,70 @@ jobs:
 
 > Each job's `SHA256SUMS` must aggregate **all four** zips (per the checksums job), because the bootstrap fetches one `SHA256SUMS` for all platforms. The per-platform `build_engine.py` `SHA256SUMS` is local-only; CI's `checksums` job produces the authoritative combined file.
 
+**Prerequisite (one-time, do before the first release):** the metadata JSONs are not on HF yet — `publish_model.py` only pushed the binaries. Upload each model's JSON into its existing repo (they keep their engine-expected names):
+
+```bash
+.venv/bin/python ml/scripts/publish_model.py --repo yalishanda/dynamics-needed-lgbm \
+    --artifact data/processed/lightgbm_features.json --path-in-repo lightgbm_features.json --no-card
+.venv/bin/python ml/scripts/publish_model.py --repo yalishanda/dynamics-needed-mdn \
+    --artifact data/processed/mdn_meta.json --path-in-repo mdn_meta.json --no-card
+.venv/bin/python ml/scripts/publish_model.py --repo yalishanda/dynamics-needed-categorical \
+    --artifact data/processed/transformer_meta.json --path-in-repo transformer_meta.json --no-card
+```
+
 - [ ] **Step 2: Create the weights-fetch helper**
 
 ```python
 # ml/packaging/fetch_weights.py
-"""Download the 6 engine weight files into --out (default data/processed).
+"""Assemble the 6 engine weight files into --out (default data/processed).
 
-Uses the project's Hugging Face model repo. Confirm repo id vs ml/scripts/publish_model.py.
+Each of the 3 HF model repos holds its binary plus its metadata JSON. The
+binaries are stored under generic names (model.joblib / model.pt) and are
+renamed here to the names Engine.load() expects; the JSONs already match.
+
+  yalishanda/dynamics-needed-lgbm        : model.joblib -> lightgbm_model.joblib ; lightgbm_features.json
+  yalishanda/dynamics-needed-mdn         : model.pt     -> head_mdn.pt           ; mdn_meta.json
+  yalishanda/dynamics-needed-categorical : model.pt     -> head_categorical.pt   ; transformer_meta.json
+
+Reads HF_TOKEN from the environment for private repos.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import shutil
 
 from huggingface_hub import hf_hub_download
 
-REPO_ID = "OWNER/dynamics-needed-models"  # TODO confirm against publish_model.py
-FILES = ["lightgbm_model.joblib", "lightgbm_features.json", "mdn_meta.json",
-         "head_mdn.pt", "transformer_meta.json", "head_categorical.pt"]
+# repo -> [(name_in_repo, name_engine_expects), ...]
+REPOS = {
+    "yalishanda/dynamics-needed-lgbm": [
+        ("model.joblib", "lightgbm_model.joblib"),
+        ("lightgbm_features.json", "lightgbm_features.json"),
+    ],
+    "yalishanda/dynamics-needed-mdn": [
+        ("model.pt", "head_mdn.pt"),
+        ("mdn_meta.json", "mdn_meta.json"),
+    ],
+    "yalishanda/dynamics-needed-categorical": [
+        ("model.pt", "head_categorical.pt"),
+        ("transformer_meta.json", "transformer_meta.json"),
+    ],
+}
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--out", default=os.path.join("data", "processed"))
+    p.add_argument("--revision", default=None, help="e.g. v0.1.0 to pin a tagged model")
     args = p.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    for f in FILES:
-        path = hf_hub_download(repo_id=REPO_ID, filename=f)
-        dst = os.path.join(args.out, f)
-        if os.path.abspath(path) != os.path.abspath(dst):
-            import shutil
-            shutil.copy(path, dst)
+    for repo, files in REPOS.items():
+        for src_name, dst_name in files:
+            path = hf_hub_download(repo_id=repo, filename=src_name, revision=args.revision)
+            dst = os.path.join(args.out, dst_name)
+            if os.path.abspath(path) != os.path.abspath(dst):
+                shutil.copy(path, dst)
     print("weights ready in", args.out)
 
 
@@ -1383,7 +1414,7 @@ Replace the current developer-setup instructions for the Reaper tool with a user
 
 1. Install [ReaPack](https://reapack.com/) and [ReaImGui](https://github.com/cfillion/reaimgui) (ReaPack: Browse packages -> "ReaImGui").
 2. ReaPack -> Import repositories -> paste:
-   `https://OWNER.github.io/REPO/index.xml`
+   `https://yalishanda42.github.io/dynamics-needed/index.xml`
 3. ReaPack -> Browse packages -> install **Dynamics Needed**.
 4. Run the action **Custom: dynamics_needed.py**. On first launch it downloads
    the inference engine (~250 MB) and starts automatically.
@@ -1429,8 +1460,8 @@ git commit -m "docs: ReaPack install + dev/build instructions; ignore build outp
 - Excludes (partitura/music21/pyfluidsynth/matplotlib/pyarrow/jupyter) → Task 5 spec `EXCLUDES`. ✓
 - Weights set (6 files) → Task 5 `WEIGHT_FILES`, Task 10 `fetch_weights.FILES`, Task 6 usage. ✓
 
-**Placeholder scan:** The only intentional placeholders are the identity literals `OWNER/REPO` and the HF `REPO_ID`, flagged in Global Constraints and Tasks 3/10 to be confirmed before those tasks. No `TBD`/"handle edge cases"/uncoded steps remain.
+**Placeholder scan:** All identity literals are resolved — GitHub `yalishanda42/dynamics-needed`, HF repos `yalishanda/dynamics-needed-{lgbm,mdn,categorical}`. No `TBD`/"handle edge cases"/uncoded steps remain. The one execution prerequisite is the one-time metadata-JSON upload to the 3 HF repos (Task 10, before the first release).
 
 **Type consistency:** `platform_key()` values, `engine_exe`/`weights_dir`/`config_path` names, and the config keys `engine_path`/`proc_dir`/`engine_version`/`port` are used identically across dn_paths, bootstrap, engine_client, smoke_test, and the ReaScript. `asset_name`/`asset_url`/`sums_url`/`SHA256SUMS` names match between bootstrap, build_engine, and CI.
 
-**Open confirmations before execution:** (1) GitHub `OWNER/REPO`; (2) the HF model repo id for `fetch_weights.py`; (3) whether the release tag `engine-v0.1.0` matches the pinned `PINNED_ENGINE_VERSION` = `0.1.0`.
+**Open confirmations before execution:** all identities resolved. The only remaining coupling to keep in sync: the release tag `engine-v0.1.0` must match `PINNED_ENGINE_VERSION = "0.1.0"` (bump both together per release), and the one-time metadata-JSON upload to the 3 HF repos must happen before the first CI release.
