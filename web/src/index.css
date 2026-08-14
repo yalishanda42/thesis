@@ -1,0 +1,238 @@
+:root {
+  /* Dark studio palette — warm charcoal, off-white, olive-gray, velocity yellow */
+  --bg: #0d0e0b;
+  --bg-2: #14160f;
+  --ink: #f4f2ea;
+  --muted: #9a9c8b;
+  --accent: #f3c33b; /* velocity yellow, from the plugin's velocity lane */
+  --accent-soft: rgba(243, 195, 59, 0.14);
+  --line: rgba(244, 242, 234, 0.1);
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* ---- Layout ---- */
+.hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1.5rem, 4vw, 2.75rem);
+  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem);
+  text-align: center;
+  overflow: clip;
+}
+
+/* Let flex children shrink below their content's intrinsic width */
+.hero > * {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Soft radial glow sitting behind the title */
+.glow {
+  position: absolute;
+  z-index: -1;
+  top: 24%;
+  left: 50%;
+  width: min(90vw, 900px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    var(--accent-soft) 0%,
+    rgba(243, 195, 59, 0.05) 35%,
+    transparent 68%
+  );
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+/* ---- Type ---- */
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(0.7rem, 1.6vw, 0.85rem);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.9rem, 14vw, 11rem);
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #ffffff 0%, #d9d7c8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.05rem, 3.2vw, 1.7rem);
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+/* ---- CTAs ---- */
+.cta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.cta-primary {
+  display: inline-block;
+  padding: 0.85rem 1.9rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #17180f;
+  font-weight: 600;
+  font-size: 1.02rem;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  box-shadow: 0 0 0 1px rgba(243, 195, 59, 0.5), 0 12px 34px -12px rgba(243, 195, 59, 0.6);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 1px rgba(243, 195, 59, 0.7), 0 18px 44px -12px rgba(243, 195, 59, 0.75);
+}
+
+.cta-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--muted);
+}
+
+.text-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  border-bottom: 1px solid transparent;
+  transition: color 0.16s ease, border-color 0.16s ease;
+}
+
+.text-link:hover {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.dot {
+  color: var(--line);
+}
+
+/* ---- Preview window ---- */
+.window {
+  margin: 0;
+  width: min(100%, 900px);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 40px 90px -30px rgba(0, 0, 0, 0.8),
+    0 0 60px -30px rgba(243, 195, 59, 0.25);
+}
+
+.window-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--line);
+}
+
+.traffic {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.traffic.red {
+  background: #ec6a5e;
+}
+.traffic.amber {
+  background: #f3bd4e;
+}
+.traffic.green {
+  background: #61c454;
+}
+
+.window-title {
+  margin-left: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---- Footer ---- */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.footer .sep {
+  color: var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
