@@ -27,7 +27,7 @@ def _post(url, payload, timeout=60.0):
 
 
 def main():
-    engine_dir = sys.argv[1]
+    engine_dir = os.path.abspath(sys.argv[1])
     port = 8799
     if "--port" in sys.argv:
         port = int(sys.argv[sys.argv.index("--port") + 1])
