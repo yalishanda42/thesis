@@ -7,14 +7,21 @@ permissions:
   contents: write
 
 jobs:
+  # Create the release ONCE up front. The matrix jobs below then upload their
+  # asset to this already-existing release, which avoids the race where parallel
+  # softprops/action-gh-release calls each try to CREATE the same release (one
+  # then fails its upload). Parallel uploads of distinct filenames are fine.
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+
   build:
+    needs: create-release
     strategy:
       fail-fast: false
-      # Serialize: the matrix jobs all write to the SAME GitHub Release, and
-      # concurrent softprops/action-gh-release calls race on creating it (one
-      # job's upload then fails). One at a time = first job creates the release,
-      # the rest append their asset. ~4x slower but correct.
-      max-parallel: 1
       matrix:
         include:
           - {os: macos-14, key: macos-arm64}
