@@ -14,7 +14,13 @@ def main() -> None:
     p.add_argument("--parent-pid", type=int, default=None)
     p.add_argument("--idle-timeout", type=int, default=1800)
     p.add_argument("--proc-dir", default=os.path.join("data", "processed"))
+    p.add_argument("--download", action="store_true",
+                   help="download missing model files from the HF Hub before serving")
     args = p.parse_args()
+
+    from .download import missing_files, download_models
+    if args.download or missing_files(args.proc_dir):
+        download_models(args.proc_dir, log=lambda m: print(m, flush=True))
 
     engine = Engine.load(args.proc_dir)
     run(engine, port=args.port, parent_pid=args.parent_pid, idle_timeout=args.idle_timeout)
