@@ -3,8 +3,8 @@ import preview from './assets/preview.gif'
 
 const LINKS = {
   demo: 'https://huggingface.co/spaces/yalishanda/dynamics-needed',
-  plugin: 'https://github.com/yalishanda42/thesis/tree/main/plugin/reaper',
-  github: 'https://github.com/yalishanda42/thesis',
+  plugin: 'https://github.com/yalishanda42/dynamics-needed#install-in-reaper',
+  github: 'https://github.com/yalishanda42/dynamics-needed',
   models: 'https://huggingface.co/yalishanda',
 }
 

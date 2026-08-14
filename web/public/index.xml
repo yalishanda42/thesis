@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<index version="1" name="Dynamics Needed">
+  <category name="MIDI Editor">
+    <reapack name="dynamics_needed.py" type="script">
+      <metadata>
+        <description>Dynamics Needed - restore humanized drum-note velocities in the MIDI editor. On first run it downloads its inference engine.</description>
+      </metadata>
+      <version name="0.1.0" author="Dynamics Needed" time="2026-08-14T16:20:37Z">
+        <source main="true">https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper/dynamics_needed.py</source>
+        <source file="dn_paths.py">https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper/dn_paths.py</source>
+        <source file="bootstrap.py">https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper/bootstrap.py</source>
+        <source file="engine_client.py">https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper/engine_client.py</source>
+        <source file="dn_core.py">https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper/dn_core.py</source>
+        <source file="predict_worker.py">https://raw.githubusercontent.com/yalishanda42/dynamics-needed/main/plugin/reaper/predict_worker.py</source>
+      </version>
+    </reapack>
+  </category>
+</index>
