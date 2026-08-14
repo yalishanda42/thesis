@@ -56,13 +56,18 @@ The inference path imports only: `numpy`, `pandas`, `torch`, `joblib`, `lightgbm
 
 Reaper defines no `__file__` for Python ReaScripts, and there is no repo anymore. Because ReaPack installs a package to a **deterministic** location, the ReaScript computes its own directory from `RPR_GetResourcePath()` + the known repo/category name (chosen by us in `index.xml`) and `sys.path.insert`s that, instead of relying on `repo_root`. This is `__file__`-free and survives updates.
 
-### `engine_client.start_engine` — spawn the frozen binary
+### `engine_client.start_engine` — dual-mode spawn (dev vs frozen)
 
-One substantive change: instead of `[cfg["venv_python"], "-m", "drum_dynamics.serve", …]`, spawn `[cfg["engine_path"], "--port", …, "--parent-pid", …]` where `engine_path` points at the frozen executable inside the installed engine folder. `cwd` becomes the engine folder (weights are bundled relative to it via `--proc-dir`, which the launcher sets to the bundled weights dir). Everything else (`health`, `predict`, `ensure_engine`) is unchanged — it stays pure-stdlib and unit-tested.
+`start_engine` gains two modes, chosen from the config:
+
+- **Frozen (default, what users get):** spawn `[cfg["engine_path"], "--port", …, "--parent-pid", …]` where `engine_path` points at the frozen executable inside the installed engine folder. `cwd` becomes the engine folder; weights are found via `--proc-dir` pointing at the bundled weights dir.
+- **Dev:** if the config carries `venv_python` + `repo_root` (or `DN_DEV=1` is set), spawn `[cfg["venv_python"], "-m", "drum_dynamics.serve", …]` as today. This preserves the fast inner loop — edit code, re-run, no re-freeze — so the freeze is only exercised when packaging is under test.
+
+Everything else (`health`, `predict`, `ensure_engine`) is unchanged and stays pure-stdlib + unit-tested.
 
 ### Config schema shrinks and is auto-derived
 
-`dynamics_needed_config.json` drops `venv_python` and `repo_root`; it becomes `{ "engine_path": <path to frozen exe>, "engine_version": <str>, "port": <int> }`, written by the first-run bootstrap (not by a human). `setup_reaper.py` is retired from the user flow (kept only as a dev convenience or removed).
+The user-facing `dynamics_needed_config.json` becomes `{ "engine_path": <path to frozen exe>, "engine_version": <str>, "port": <int> }`, written by the first-run bootstrap (not by a human). For development, `setup_reaper.py` is kept as a dev convenience that writes the legacy `{ "venv_python", "repo_root", "port" }` shape, which `start_engine` recognizes as dev mode (see above). So the same config file drives both worlds; users never see the dev fields.
 
 ### First-run bootstrap (new, inside the ReaScript, pure stdlib)
 
@@ -70,7 +75,7 @@ On launch the ReaScript checks for an installed engine at `<resource>/DynamicsNe
 
 - **If present and version matches:** proceed normally.
 - **If absent or version differs:** show a dialog — *"Dynamics Needed needs to download its engine (~250 MB). Download now?"* On confirm:
-  1. Resolve the platform-specific asset URL for the **pinned engine version** (the version string is a constant in the shipped ReaScript, so ReaScript and engine releases stay decoupled but coordinated).
+  1. Resolve the platform-specific asset URL for the **pinned engine version** (the version string is a constant in the shipped ReaScript, so ReaScript and engine releases stay decoupled but coordinated). The base URL is overridable via `DN_RELEASE_BASE_URL` (a `file://` dir or `localhost` server) so the full flow can be exercised offline against a locally built freeze; unset, it defaults to the public GitHub Releases URL.
   2. Download the archive **and** its `SHA256SUMS` from the GitHub **Release** via Python `urllib` (programmatic download avoids `com.apple.quarantine` on macOS and Mark-of-the-Web on Windows).
   3. Verify SHA-256 against `SHA256SUMS`; abort with a clear message on mismatch.
   4. Unpack into `<resource>/DynamicsNeeded/engine/<version>/`, write the config, prune older engine version dirs on success.
@@ -105,7 +110,29 @@ CI may still pass a build between jobs as a short-lived Actions *artifact* (tran
 - **ReaScript:** standard ReaPack "Synchronize."
 - **Engine:** when a ReaScript update raises the pinned engine version, the bootstrap detects the installed version differs and offers to download the new one; the previous version dir is pruned after a successful install.
 
-## Testing
+## Action identity / binding preservation
+
+Reaper derives a script's command ID from its **file path** (`_RS…` hash). Implications:
+
+- **Across ReaPack updates:** the file stays at the same installed path, so the command ID is stable — users' keybinding / toolbar / MIDI-editor-menu bindings survive "Synchronize" untouched (bind once, never re-bind). A core reason to ship via ReaPack.
+- **Between the dev repo copy and the ReaPack-installed copy:** different paths → different command IDs, so the installed build must be registered/bound once, separately from the dev action. Stable thereafter.
+- Editing the dev `.py` needs no re-register (deferred script, re-read each launch; same path, same ID).
+
+## Local testing & dev loop
+
+The two hooks above (dual-mode `start_engine`, `DN_RELEASE_BASE_URL`) make almost the entire pipeline testable without cutting a real release. The ladder:
+
+| Layer | What it proves | Needs |
+|-------|----------------|-------|
+| `pytest` | client + bootstrap logic — URL build, SHA-256 verify, path/idempotency, failure branches (network mocked) | nothing |
+| Local PyInstaller freeze + smoke | hidden-imports OK **for the dev's own OS**; `/health` + `/predict` work | dev platform only |
+| Bootstrap against a `file://` release | real resolve → download → checksum → unpack → spawn path, offline | `DN_RELEASE_BASE_URL` |
+| **Local ReaPack repo** | full "browse → install → Synchronize → run", action registers/binds correctly | import a `file://` `index.xml` into ReaPack |
+| Draft / pre-release GitHub tag | the real GitHub Releases download path end-to-end | one throwaway tag |
+
+The one thing not doable locally is building the **other** platforms' freezes (a Windows/Linux binary can't be reliably produced from macOS) — that is exactly what the CI matrix + per-platform smoke test cover. The dev validates their own OS locally; CI validates the other three.
+
+## Testing (CI)
 
 - `engine_client` + bootstrap stay pure-stdlib and unit-tested: cover version resolution, asset-URL construction, SHA-256 verification, path/idempotency logic, and failure branches (mock the network).
 - **Per-platform CI smoke test** (the key de-risker): unzip the freeze, launch it, poll `/health`, POST one `/predict`, assert a valid velocity map. This catches **PyInstaller hidden-import gaps** — torch and lightgbm are notorious for these — *before* a release ships.
