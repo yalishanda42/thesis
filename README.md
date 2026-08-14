@@ -81,6 +81,13 @@ tags the repo `v<version>`, so `hf download <repo> --revision v0.1.0` works).
   --artifact data/processed/head_mdn.pt --path-in-repo mdn_head.pt \
   --card ml/model_cards/mdn.md --metrics docs/plan_c/mdn/metrics.json --version 0.1.0
 .venv/bin/hf upload <namespace>/dynamics-needed-mdn data/processed/transformer_best.pt backbone.pt --repo-type model
+
+# Categorical transformer -> its own repo (shares the MDN backbone + a softmax head)
+.venv/bin/python ml/scripts/publish_model.py \
+  --repo <namespace>/dynamics-needed-categorical \
+  --artifact data/processed/head_categorical.pt --path-in-repo categorical_head.pt \
+  --card ml/model_cards/categorical.md --metrics docs/plan_c/categorical/metrics.json --version 0.1.0
+.venv/bin/hf upload <namespace>/dynamics-needed-categorical data/processed/transformer_best.pt backbone.pt --repo-type model
 ```
 
 The `metrics.json` files are produced by `ml/scripts/train_tabular.py` and

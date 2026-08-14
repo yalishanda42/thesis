@@ -22,6 +22,14 @@ Examples:
         --card ml/model_cards/mdn.md \\
         --metrics <mdn_out>/metrics.json
 
+    # Categorical transformer (auto-filled card; then add the shared backbone)
+    python ml/scripts/publish_model.py \\
+        --repo <namespace>/dynamics-needed-categorical \\
+        --artifact data/processed/head_categorical.pt \\
+        --path-in-repo categorical_head.pt \\
+        --card ml/model_cards/categorical.md \\
+        --metrics docs/plan_c/categorical/metrics.json
+
 Auth: run `hf auth login` first, or set HF_TOKEN. No namespace is hardcoded.
 """
 from __future__ import annotations
