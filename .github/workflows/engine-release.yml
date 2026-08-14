@@ -25,9 +25,12 @@ jobs:
       matrix:
         include:
           - {os: macos-14, key: macos-arm64}
-          - {os: macos-13, key: macos-x86_64}
           - {os: windows-latest, key: windows-x64}
           - {os: ubuntu-latest, key: linux-x64}
+          # macos-x86_64 (Intel) is omitted: GitHub's macos-13 runners are
+          # deprecated/scarce and block releases. Apple Silicon is covered by
+          # macos-arm64. Re-add `{os: macos-13, key: macos-x86_64}` if Intel
+          # Mac support is needed and runners are available.
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
