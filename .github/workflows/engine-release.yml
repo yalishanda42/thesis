@@ -1,0 +1,57 @@
+name: engine-release
+on:
+  push:
+    tags: ["engine-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: macos-14, key: macos-arm64}
+          - {os: macos-13, key: macos-x86_64}
+          - {os: windows-latest, key: windows-x64}
+          - {os: ubuntu-latest, key: linux-x64}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Install
+        run: python -m pip install -e "ml[packaging]"
+      - name: Fetch weights
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # optional; only needed if the model repos are private
+        run: python ml/packaging/fetch_weights.py --out data/processed
+      - name: Version from tag
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#engine-v}" >> "$GITHUB_OUTPUT"
+      - name: Build
+        run: python ml/packaging/build_engine.py --version ${{ steps.ver.outputs.version }}
+      - name: Smoke test
+        run: python ml/packaging/smoke_test.py ml/packaging/dist/dn-engine
+      - name: Upload engine to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ml/packaging/dist/dn-engine-*-${{ matrix.key }}.zip
+
+  checksums:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ github.ref_name }}
+          fileName: "dn-engine-*.zip"
+      - name: Build combined SHA256SUMS
+        run: sha256sum dn-engine-*.zip > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: SHA256SUMS
