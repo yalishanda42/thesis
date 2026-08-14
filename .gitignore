@@ -63,3 +63,5 @@ pnpm-debug.log*
 # Dynamics Needed Reaper tool (machine-local)
 plugin/reaper/.runtime/
 plugin/reaper/config.local.json
+# locally-generated ReaPack index (the published one lives at web/public/index.xml)
+plugin/reaper/reapack/index.xml

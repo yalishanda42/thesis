@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 notebooks = ["jupyter", "ipykernel", "nbconvert"]
+packaging = ["pyinstaller>=6.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
