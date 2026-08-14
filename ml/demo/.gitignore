@@ -1,0 +1,9 @@
+# deploy bundle + large binaries pulled in at deploy time (never committed)
+/_build/
+/models/
+/sf/
+/drum_dynamics/
+*.pt
+*.joblib
+*.sf2
+__pycache__/

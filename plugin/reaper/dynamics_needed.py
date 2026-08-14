@@ -1,65 +1,35 @@
-"""Dynamics Needed - Reaper action: restore velocities of the selected drum notes.
+# plugin/reaper/dynamics_needed.py
+"""Dynamics Needed - ReaImGui panel (Python).
 
-Runs under Reaper's embedded Python (stdlib only). Auto-starts the local inference
-service if it isn't already running, then rewrites the selected notes' velocities.
+Restores humanized velocities of drum notes with a live preview. Runs under
+Reaper's embedded Python. Requires ReaImGui (install via ReaPack) -- its API is
+reached through the official Python shim ``imgui.py`` (ReaImGui does NOT expose
+RPR_ImGui_* in reaper_python; the shim provides module-level imgui.* functions).
+
+ASCII only. No __file__. RPR_* (core API) return tuples; imgui.* out-params are
+returned as tuples too (e.g. Begin -> (visible, open), Combo -> (changed, idx)).
 """
 import json
 import os
-import subprocess
 import sys
-import time
-import urllib.request
 
-from reaper_python import *  # noqa: F401,F403  (provides RPR_* functions)
+from reaper_python import *  # noqa: F401,F403
 
-def _msg(text):
-    RPR_ShowConsoleMsg(text + "\n")
+try:
+    sys.path.append(os.path.join(
+        RPR_GetResourcePath(), "Scripts", "ReaTeam Extensions", "API"))
+    import imgui  # ReaImGui official Python binding shim
+except Exception as e:
+    RPR_ShowConsoleMsg(
+        "Dynamics Needed: ReaImGui Python binding not found "
+        "(install ReaImGui via ReaPack): {}\n".format(e))
+    raise
 
 
 def _load_config():
-    # Reaper defines neither __file__ nor a Python get_action_context() here, so we
-    # locate our config via the Reaper resource path (setup_reaper.py writes it
-    # there). The config carries repo_root, from which we find dn_core + the engine.
     cfg_path = os.path.join(RPR_GetResourcePath(), "dynamics_needed_config.json")
     with open(cfg_path) as fh:
         return json.load(fh)
-
-
-def _base_url(cfg):
-    return "http://127.0.0.1:{}".format(cfg.get("port", 8765))
-
-
-def _health(cfg):
-    try:
-        with urllib.request.urlopen(_base_url(cfg) + "/health", timeout=1) as r:
-            return json.loads(r.read())
-    except Exception:
-        return None
-
-
-def _start_engine(cfg):
-    runtime = os.path.join(cfg["repo_root"], "plugin", "reaper", ".runtime")
-    os.makedirs(runtime, exist_ok=True)
-    log = open(os.path.join(runtime, "engine.log"), "a")
-    subprocess.Popen(
-        [cfg["venv_python"], "-m", "drum_dynamics.serve",
-         "--port", str(cfg.get("port", 8765)), "--parent-pid", str(os.getpid())],
-        cwd=cfg["repo_root"], stdout=log, stderr=log,
-        stdin=subprocess.DEVNULL, start_new_session=True,
-    )
-
-
-def _ensure_engine(cfg):
-    health = _health(cfg)
-    if health:
-        return health
-    _start_engine(cfg)
-    for _ in range(30):                      # ~15s for cold torch import
-        time.sleep(0.5)
-        health = _health(cfg)
-        if health:
-            return health
-    return None
 
 
 def _active_take():
@@ -68,7 +38,6 @@ def _active_take():
 
 
 def _read_notes(take):
-    """Return list of note dicts with project-time onsets and selection flags."""
     _, _, note_count, _, _ = RPR_MIDI_CountEvts(take, 0, 0, 0)
     notes = []
     for i in range(note_count):
@@ -108,102 +77,246 @@ def _save_last(key, params):
     RPR_SetProjExtState(0, "DynamicsNeeded", key, json.dumps(params))
 
 
-def _dialog(health, last):
-    """Native GetUserInputs dialog. Returns params dict or None if cancelled."""
-    styles = health["styles"]
-    genres = health["genres"]
-    defaults = {"genre": last.get("genre", genres[0]),
-                "style": last.get("style", styles[0]),
-                "model": last.get("model", "mdn"),
-                "temperature": last.get("temperature", 1.0),
-                "blend": last.get("blend", 1.0),
-                "beat_type": last.get("beat_type", "beat")}
-    fields = "genre,style,model (lgbm/mdn),temperature,blend (0-1),fill? (y/n)"
-    csv_default = "{},{},{},{},{},{}".format(
-        defaults["genre"], defaults["style"], defaults["model"],
-        defaults["temperature"], defaults["blend"],
-        "y" if defaults["beat_type"] == "fill" else "n")
-    ok, _, _, _, csv, _ = RPR_GetUserInputs("Dynamics Needed", 6, fields, csv_default, 1024)
-    if not ok:
-        return None
-    genre, style, model, temp, blend, fill = (csv.split(",", 5) + [""] * 6)[:6]
-    try:
-        temperature = float(temp)
-        blend_val = float(blend)
-    except ValueError:
-        _msg("Dynamics Needed: temperature and blend must be numbers.")
-        return None
-    return {"genre": genre.strip(), "style": style.strip(), "model": model.strip(),
-            "temperature": temperature, "blend": blend_val,
-            "beat_type": "fill" if fill.strip().lower().startswith("y") else "beat"}
-
-
 def _apply(take, velocities):
-    # This Python binding can't pass "leave unchanged" (-1) -- it always writes the
-    # value -- so re-read each note's real fields and rewrite ONLY the velocity.
+    # This binding always writes every field, so re-read each note and rewrite
+    # ONLY velocity (leave selection/mute/position/pitch untouched).
     for idx, vel in velocities.items():
         ok, _, _, sel, muted, startppq, endppq, chan, pitch, _ = RPR_MIDI_GetNote(
             take, idx, 0, 0, 0.0, 0.0, 0, 0, 0)
         if ok:
             RPR_MIDI_SetNote(take, idx, sel, muted, startppq, endppq, chan, pitch,
-                             int(vel), True)   # noSort=True; one sort after the loop
+                             int(vel), True)   # noSort; one sort after the loop
     RPR_MIDI_Sort(take)
 
 
-def main():
-    try:
-        cfg = _load_config()
-    except Exception:
-        _msg("Dynamics Needed: no config found. Run "
-             "'python plugin/reaper/setup_reaper.py' once, then retry.")
-        return
+def _default_params(health, last, dn_core):
+    styles = health.get("styles", []) or ["rock"]
+    genres = health.get("genres", []) or ["rock"]
+    default_genre = last.get("genre", genres[0])
+    styles_for_default = dn_core.filter_styles_by_genre(styles, default_genre) or styles
+    default_style = last.get("style", styles_for_default[0] if styles_for_default else styles[0])
+    return {
+        "genre": default_genre,
+        "style": default_style,
+        "model": last.get("model", "mdn"),
+        "temperature": float(last.get("temperature", 1.0)),
+        "blend": float(last.get("blend", 0.8)),
+        "beat_type": last.get("beat_type", "beat"),
+    }
+
+
+def _start_engine_async(state):
+    state["engine_ready"] = False
+    state["health"] = None
+    def worker():
+        h = state["engine_client"].ensure_engine(state["cfg"])
+        if h and not h.get("genres") and h.get("styles"):
+            h["genres"] = state["dn_core"].genres_from_styles(h["styles"])
+        with state["engine_lock"]:
+            state["health"] = h
+            state["engine_ready"] = True
+    import threading
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def _init():
+    cfg = _load_config()
     sys.path.insert(0, os.path.join(cfg["repo_root"], "plugin", "reaper"))
+    import engine_client
     import dn_core
-    take = _active_take()
-    if not take:
-        _msg("Dynamics Needed: open a MIDI item in the MIDI editor first.")
-        return
-    health = _ensure_engine(cfg)
-    if not health:
-        _msg("Dynamics Needed: could not reach the inference engine. "
-             "Run 'python plugin/reaper/setup_reaper.py' once, then retry. "
-             "If it persists, check plugin/reaper/.runtime/engine.log")
-        return
+    import threading
+    state = {
+        "cfg": cfg,
+        "engine_client": engine_client,
+        "dn_core": dn_core,
+        "ctx": imgui.CreateContext("Dynamics Needed"),
+        "engine_lock": threading.Lock(),
+        "engine_ready": False,
+        "health": None,
+        "open": True,
+    }
+    _start_engine_async(state)
+    take = None
+    editor = RPR_MIDIEditor_GetActive()
+    if editor:
+        take = RPR_MIDIEditor_GetTake(editor)
+    state["last_params"] = _load_last(_track_key(take)) if take else {}
+    state["params"] = None
+    state["live"] = True
+    import predict_worker
+    ec, cfgd = state["engine_client"], state["cfg"]
+    state["worker"] = predict_worker.PredictWorker(
+        lambda req: dn_core.parse_velocities(ec.predict(cfgd, req)))
+    state["worker"].start()
+    state["seq"] = 0
+    state["preview"] = {}
+    return state
 
-    notes = _read_notes(take)
-    if not notes:
-        _msg("Dynamics Needed: no notes found in the active take.")
+
+STATE = None
+
+
+def loop():
+    ctx = STATE["ctx"]
+    dn_core = STATE["dn_core"]
+    visible, STATE["open"] = imgui.Begin(ctx, "Dynamics Needed", True)
+    if visible:
+        with STATE["engine_lock"]:
+            engine_ready = STATE["engine_ready"]
+            h = STATE["health"]
+
+        if not engine_ready:
+            imgui.Text(ctx, "Starting engine...")
+            imgui.End(ctx)
+        elif h is None:
+            imgui.TextColored(ctx, 0xFF4040FF, "Engine unreachable")
+            imgui.SameLine(ctx)
+            if imgui.Button(ctx, "Retry"):
+                _start_engine_async(STATE)
+            imgui.End(ctx)
+        else:
+            if STATE["params"] is None:
+                STATE["params"] = _default_params(h, STATE["last_params"], dn_core)
+
+            p = STATE["params"]
+            genres = h.get("genres", []) or ["rock"]
+            styles_for_genre = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"]) or [p["style"]]
+
+            # Genre combo
+            gi = genres.index(p["genre"]) if p["genre"] in genres else 0
+            changed, gi = imgui.Combo(ctx, "Genre", gi, "\x00".join(genres) + "\x00")
+            if changed:
+                p["genre"] = genres[gi]
+                new_styles = dn_core.filter_styles_by_genre(h.get("styles", []), p["genre"])
+                p["style"] = new_styles[0] if new_styles else p["style"]
+
+            # Style combo (filtered by genre). Only LGBM uses style; the
+            # transformer heads (MDN, Categorical) condition on genre only.
+            style_disabled = p["model"] != "lgbm"
+            si = styles_for_genre.index(p["style"]) if p["style"] in styles_for_genre else 0
+            if style_disabled:
+                imgui.BeginDisabled(ctx, True)
+            changed, si = imgui.Combo(ctx, "Style", si, "\x00".join(styles_for_genre) + "\x00")
+            if changed:
+                p["style"] = styles_for_genre[si]
+            if style_disabled:
+                imgui.EndDisabled(ctx)
+                imgui.SameLine(ctx)
+                imgui.Text(ctx, "(LGBM only)")
+
+            # Model radio
+            if imgui.RadioButton(ctx, "LGBM", p["model"] == "lgbm"):
+                p["model"] = "lgbm"
+            imgui.SameLine(ctx)
+            if imgui.RadioButton(ctx, "MDN", p["model"] == "mdn"):
+                p["model"] = "mdn"
+            imgui.SameLine(ctx)
+            if imgui.RadioButton(ctx, "Categorical", p["model"] == "categorical"):
+                p["model"] = "categorical"
+
+            # Sliders. Temp only affects MDN sampling (LGBM is deterministic and
+            # Categorical sampling ignores temperature), so enable it only for MDN.
+            temp_disabled = p["model"] != "mdn"
+            if temp_disabled:
+                imgui.BeginDisabled(ctx, True)
+            changed, p["temperature"] = imgui.SliderDouble(ctx, "Temp", p["temperature"], 0.0, 2.0)
+            if temp_disabled:
+                imgui.EndDisabled(ctx)
+                imgui.SameLine(ctx)
+                imgui.Text(ctx, "(MDN only)")
+            changed, p["blend"] = imgui.SliderDouble(ctx, "Blend", p["blend"], 0.0, 1.0)
+
+            # Is a fill?
+            changed, is_fill = imgui.Checkbox(ctx, "Is a fill?", p["beat_type"] == "fill")
+            if changed:
+                p["beat_type"] = "fill" if is_fill else "beat"
+
+            take = _active_take()
+            notes = _read_notes(take) if take else []
+            targets = set(dn_core.resolve_target_indices(notes))
+            for nt in notes:
+                nt["selected"] = nt["index"] in targets
+
+            # Build a change signature so we only re-predict on real changes.
+            sig = (json.dumps(STATE["params"], sort_keys=True),
+                   tuple((nt["index"], nt["pitch"], round(nt["onset_sec"], 4)) for nt in notes if nt["selected"]))
+            force = STATE.pop("force_preview", False)
+            if take and (force or (STATE["live"] and sig != STATE.get("last_sig"))):
+                STATE["last_sig"] = sig
+                bpm, time_sig = _tempo_and_sig(take)
+                req = dn_core.build_predict_request(
+                    STATE["params"]["model"], STATE["params"]["style"],
+                    STATE["params"]["temperature"], STATE["params"]["blend"],
+                    STATE["params"]["beat_type"], bpm, time_sig, notes)
+                STATE["seq"] += 1
+                STATE["worker"].submit(STATE["seq"], req)
+
+            res = STATE["worker"].result()
+            if res is not None:
+                STATE["preview"] = res[1]
+
+            # Live toggle + manual Preview on one row; Preview is hidden while
+            # Live is on (auto-predict makes it redundant).
+            _, STATE["live"] = imgui.Checkbox(ctx, "Live Preview", STATE["live"])
+            if not STATE["live"]:
+                imgui.SameLine(ctx)
+                if imgui.Button(ctx, "Preview"):   # forces a fresh predict
+                    STATE["force_preview"] = True
+
+            target_notes = [nt for nt in notes if nt["selected"]]
+            imgui.Text(ctx, "velocities ({} target notes)".format(len(target_notes)))
+            dl = imgui.GetWindowDrawList(ctx)
+            x, y = imgui.GetCursorScreenPos(ctx)
+            w = 260.0
+            lane_h = 60.0
+            n = max(1, len(target_notes))
+            bw = w / n
+            cur_col = 0x8080807F       # faint gray (RGBA)
+            pred_col = 0x33CCFFFF      # cyan
+            for i, nt in enumerate(target_notes):
+                bx = x + i * bw
+                cur = nt["velocity"] / 127.0
+                pred = STATE["preview"].get(nt["index"], nt["velocity"]) / 127.0
+                imgui.DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - cur), bx + bw - 1, y + lane_h, cur_col)
+                imgui.DrawList_AddRectFilled(dl, bx, y + lane_h * (1 - pred), bx + bw - 1, y + lane_h, pred_col)
+            imgui.Dummy(ctx, w, lane_h)   # reserve layout space under the drawing
+
+            # Status line
+            if STATE["worker"].last_error():
+                imgui.TextColored(ctx, 0xFFAA40FF, "Predict failed: " + STATE["worker"].last_error())
+            elif not _active_take():
+                imgui.TextColored(ctx, 0xAAAAAAFF, "Open a MIDI item to edit")
+            else:
+                imgui.TextColored(ctx, 0x40FF40FF, "ready")
+
+            # Apply
+            can_apply = bool(_active_take()) and bool(STATE["preview"])
+            if not can_apply:
+                imgui.BeginDisabled(ctx, True)
+            if imgui.Button(ctx, "Apply") and can_apply:
+                take = _active_take()
+                RPR_Undo_BeginBlock()
+                _apply(take, STATE["preview"])
+                RPR_Undo_EndBlock("Dynamics Needed: restore velocities", -1)
+                _save_last(_track_key(take), STATE["params"])
+            if not can_apply:
+                imgui.EndDisabled(ctx)
+
+            imgui.End(ctx)
+    if not STATE["open"]:
+        STATE["worker"].stop()
         return
+    RPR_defer("loop()")
 
-    key = _track_key(take)
-    params = _dialog(health, _load_last(key))
-    if params is None:
-        return
-    _save_last(key, params)
 
-    targets = set(dn_core.resolve_target_indices(notes))
-    for n in notes:
-        n["selected"] = n["index"] in targets
-    bpm, time_sig = _tempo_and_sig(take)
-    req = dn_core.build_predict_request(
-        params["model"], params["style"], params["temperature"], params["blend"],
-        params["beat_type"], bpm, time_sig, notes)
-
-    data = json.dumps(req).encode()
+def main():
+    global STATE
     try:
-        request = urllib.request.Request(_base_url(cfg) + "/predict", data=data,
-                                         headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=60) as r:
-            response = json.loads(r.read())
+        STATE = _init()
     except Exception as e:
-        _msg("Dynamics Needed: prediction failed: {}".format(e))
+        RPR_ShowConsoleMsg("Dynamics Needed: init failed: {}\n".format(e))
         return
-
-    velocities = dn_core.parse_velocities(response)
-    RPR_Undo_BeginBlock()
-    _apply(take, velocities)
-    RPR_Undo_EndBlock("Dynamics Needed: restore velocities", -1)
-    _msg("Dynamics Needed: updated {} notes.".format(len(velocities)))
+    RPR_defer("loop()")
 
 
 main()

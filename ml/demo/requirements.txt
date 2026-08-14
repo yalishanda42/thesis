@@ -1,0 +1,12 @@
+# gradio, spaces, huggingface_hub are preinstalled + platform-managed on Spaces
+# (do NOT pin them). torch is left unpinned so the ZeroGPU runtime supplies it.
+torch
+lightgbm>=4.0
+numpy
+pandas
+scipy
+scikit-learn>=1.6
+matplotlib
+joblib
+partitura>=1.9
+pyfluidsynth
