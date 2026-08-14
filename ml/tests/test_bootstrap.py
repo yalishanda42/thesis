@@ -93,3 +93,33 @@ def test_install_prunes_old_versions(tmp_path):
     bootstrap.install(rp, "0.1.0", pk, fetch=fetch)
     assert not os.path.isdir(old)
     assert bootstrap.is_installed(rp, "0.1.0")
+
+
+def test_unify_libomp_symlinks_redundant_copies(tmp_path):
+    eng = str(tmp_path / "dn-engine")
+    internal = os.path.join(eng, "_internal")
+    sk = os.path.join(internal, "sklearn", ".dylibs")
+    tl = os.path.join(internal, "torch", "lib")
+    os.makedirs(sk); os.makedirs(tl)
+    canonical = os.path.join(sk, "libomp.dylib")
+    with open(canonical, "wb") as fh: fh.write(b"CANONICAL")
+    root_copy = os.path.join(internal, "libomp.dylib")
+    torch_copy = os.path.join(tl, "libomp.dylib")
+    with open(root_copy, "wb") as fh: fh.write(b"dup1")
+    with open(torch_copy, "wb") as fh: fh.write(b"dup2")
+
+    bootstrap.unify_libomp(eng)
+
+    assert os.path.islink(root_copy) and os.path.islink(torch_copy)
+    # both resolve to the single canonical file
+    assert os.path.realpath(root_copy) == os.path.realpath(canonical)
+    assert os.path.realpath(torch_copy) == os.path.realpath(canonical)
+    # idempotent second call
+    bootstrap.unify_libomp(eng)
+    assert os.path.islink(torch_copy)
+
+
+def test_unify_libomp_noop_without_canonical(tmp_path):
+    eng = str(tmp_path / "dn-engine")
+    os.makedirs(os.path.join(eng, "_internal"))
+    bootstrap.unify_libomp(eng)  # must not raise

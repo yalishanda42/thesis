@@ -5,6 +5,7 @@ Run from repo root: .venv/bin/python ml/packaging/build_engine.py --version 0.1.
 from __future__ import annotations
 
 import argparse
+import glob
 import hashlib
 import os
 import platform
@@ -14,6 +15,10 @@ import sys
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+sys.path.insert(0, os.path.join(REPO_ROOT, "plugin", "reaper"))
+import bootstrap  # noqa: E402
+
 DIST = os.path.join(HERE, "dist")
 WEIGHT_FILES = ["lightgbm_model.joblib", "lightgbm_features.json", "mdn_meta.json",
                 "head_mdn.pt", "transformer_meta.json", "head_categorical.pt"]
@@ -50,6 +55,11 @@ def main():
     if args.sign and platform.system() == "Darwin":
         subprocess.run(["codesign", "-s", "-", "--deep", "--force",
                         os.path.join(engine, "dn-engine")], check=True)
+
+    if platform.system() == "Darwin":
+        bootstrap.unify_libomp(engine)
+        for orig in glob.glob(os.path.join(engine, "_internal", "**", "*.dylib.orig"), recursive=True):
+            os.remove(orig)
 
     pk = platform_key()
     zip_name = "dn-engine-{}-{}.zip".format(args.version, pk)

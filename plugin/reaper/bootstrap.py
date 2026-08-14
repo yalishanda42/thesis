@@ -21,6 +21,31 @@ PINNED_ENGINE_VERSION = "0.1.0"
 GITHUB_OWNER_REPO = "yalishanda42/dynamics-needed"
 
 
+def unify_libomp(engine_dir):
+    """macOS: point the redundant libomp.dylib copies at sklearn's single copy.
+
+    Idempotent. No-op if the canonical copy is absent. Uses relative symlinks so
+    the tree stays relocatable. Safe to call on any OS (only acts on files present).
+    """
+    internal = os.path.join(engine_dir, "_internal")
+    canonical = os.path.join(internal, "sklearn", ".dylibs", "libomp.dylib")
+    if not os.path.isfile(canonical):
+        return
+    redundant = [
+        os.path.join(internal, "libomp.dylib"),
+        os.path.join(internal, "torch", "lib", "libomp.dylib"),
+    ]
+    for path in redundant:
+        if not os.path.exists(path) and not os.path.islink(path):
+            continue
+        rel = os.path.relpath(canonical, os.path.dirname(path))
+        if os.path.islink(path) and os.readlink(path) == rel:
+            continue  # already unified
+        if os.path.lexists(path):
+            os.remove(path)
+        os.symlink(rel, path)
+
+
 def release_base_url():
     override = os.environ.get("DN_RELEASE_BASE_URL")
     if override:
@@ -132,6 +157,9 @@ def install(resource_path, version, platform_key, fetch=default_fetch, log=lambd
     exe = dn_paths.engine_exe(resource_path, version)
     if os.name != "nt" and os.path.isfile(exe):
         os.chmod(exe, os.stat(exe).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    if platform_key.startswith("macos"):
+        unify_libomp(dest)
 
     _prune_other_versions(resource_path, version)
     log("Engine installed.")
