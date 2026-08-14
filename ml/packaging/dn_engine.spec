@@ -6,7 +6,7 @@ for pkg in ("lightgbm", "sklearn", "torch"):
     d, b, h = collect_all(pkg)
     datas += d; binaries += b; hiddenimports += h
 
-EXCLUDES = ["music21", "fluidsynth", "pyfluidsynth",
+EXCLUDES = ["partitura", "music21", "matplotlib", "fluidsynth", "pyfluidsynth",
             "jupyter", "ipykernel", "nbconvert",
             "notebook", "IPython"]
 
