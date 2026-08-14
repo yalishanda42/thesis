@@ -10,6 +10,11 @@ jobs:
   build:
     strategy:
       fail-fast: false
+      # Serialize: the matrix jobs all write to the SAME GitHub Release, and
+      # concurrent softprops/action-gh-release calls race on creating it (one
+      # job's upload then fails). One at a time = first job creates the release,
+      # the rest append their asset. ~4x slower but correct.
+      max-parallel: 1
       matrix:
         include:
           - {os: macos-14, key: macos-arm64}
@@ -43,6 +48,10 @@ jobs:
 
   checksums:
     needs: build
+    # Run even if a single platform build failed, so the release still gets a
+    # SHA256SUMS covering the platforms that did publish (the bootstrap fetches
+    # one SHA256SUMS and matches by filename). Fails harmlessly if no zips exist.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - uses: robinraju/release-downloader@v1
