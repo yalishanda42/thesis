@@ -7,7 +7,15 @@ flow is testable offline (see install()).
 from __future__ import annotations
 
 import hashlib
+import io
+import json
 import os
+import shutil
+import stat
+import urllib.request
+import zipfile
+
+import dn_paths
 
 PINNED_ENGINE_VERSION = "0.1.0"
 GITHUB_OWNER_REPO = "yalishanda42/dynamics-needed"
@@ -51,3 +59,80 @@ def expected_sum(sums_text, name):
 def verify(path, sums_text, name):
     want = expected_sum(sums_text, name)
     return want is not None and want == sha256_of(path)
+
+
+class BootstrapError(Exception):
+    pass
+
+
+def default_fetch(url):
+    with urllib.request.urlopen(url) as r:  # nosec - fixed release host / file://
+        return r.read()
+
+
+def is_installed(resource_path, version):
+    return os.path.isfile(dn_paths.engine_exe(resource_path, version))
+
+
+def write_config(resource_path, version, port=8765):
+    cfg = {
+        "engine_path": dn_paths.engine_exe(resource_path, version),
+        "proc_dir": dn_paths.weights_dir(resource_path, version),
+        "engine_version": version,
+        "port": int(port),
+    }
+    with open(dn_paths.config_path(resource_path), "w") as fh:
+        json.dump(cfg, fh, indent=2)
+    return cfg
+
+
+def _prune_other_versions(resource_path, keep_version):
+    root = dn_paths.engine_root(resource_path)
+    if not os.path.isdir(root):
+        return
+    for name in os.listdir(root):
+        if name != keep_version:
+            shutil.rmtree(os.path.join(root, name), ignore_errors=True)
+
+
+def install(resource_path, version, platform_key, fetch=default_fetch, log=lambda m: None):
+    base = release_base_url()
+    name = asset_name(version, platform_key)
+    dest = dn_paths.engine_dir(resource_path, version)
+    tmp = dest + ".part"
+    try:
+        log("Fetching checksums...")
+        sums_text = fetch(sums_url(base, version)).decode()
+        log("Downloading engine (~250 MB)...")
+        blob = fetch(asset_url(base, version, platform_key))
+    except Exception as e:  # network / URL errors
+        raise BootstrapError("download failed: {}".format(e))
+
+    zpath = os.path.join(os.path.dirname(dest) or ".", name)
+    os.makedirs(os.path.dirname(zpath), exist_ok=True)
+    with open(zpath, "wb") as fh:
+        fh.write(blob)
+    if not verify(zpath, sums_text, name):
+        os.remove(zpath)
+        raise BootstrapError("checksum mismatch for {}".format(name))
+
+    shutil.rmtree(tmp, ignore_errors=True)
+    try:
+        with zipfile.ZipFile(zpath) as z:
+            z.extractall(tmp)
+    except Exception as e:
+        shutil.rmtree(tmp, ignore_errors=True)
+        os.remove(zpath)
+        raise BootstrapError("unpack failed: {}".format(e))
+    os.remove(zpath)
+
+    shutil.rmtree(dest, ignore_errors=True)
+    os.replace(tmp, dest)
+
+    exe = dn_paths.engine_exe(resource_path, version)
+    if os.name != "nt" and os.path.isfile(exe):
+        os.chmod(exe, os.stat(exe).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    _prune_other_versions(resource_path, version)
+    log("Engine installed.")
+    return write_config(resource_path, version)
