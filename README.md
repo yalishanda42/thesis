@@ -19,12 +19,12 @@ note — the accents, ghost notes, and swells a machine-perfect take is missing.
 
 ---
 
-This is a master's thesis project. Given a MIDI **drum** track, it predicts each note's
+Given a MIDI **drum** track, the models predict each note's
 best-fitting velocity — restoring *dynamics* (loudness/expression), as opposed to the
-timing/tempo "humanization" most tools already do. It is trained on the
+timing/tempo "humanization" most tools already do. Trained on the
 [Expanded Groove MIDI Dataset (E-GMD)](https://magenta.tensorflow.org/datasets/e-gmd).
 
-There are three ways to use it, depending on who you are:
+There are three ways to use this project, depending on who you are:
 
 - 🥁 **Musicians** — a one-click plugin for the Reaper DAW. [Jump to install ↓](#install-in-reaper)
 - 🧑‍💻 **Developers** — run the code, the tests, and build the plugin engine yourself. [Jump ↓](#for-developers)
